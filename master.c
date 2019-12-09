@@ -11,10 +11,10 @@ int main(){
     for(i = 0; i< SO_NUM_G; i++){
         if(fork() == 0){
                 printf("ciao sonbo il giocatore %d %d \n", i, getppid());
-                excecve(NAME,args,NULL);
+                execve(NAME,args,NULL);
             break;
         }
-            //printf("Sono il proc master\n");
+
 
     }
     while((pidChild = wait(NULL)) != -1) {
