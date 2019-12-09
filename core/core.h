@@ -7,12 +7,12 @@
 #define HARD_MODE 1
 #define MAX_LINE_CONF 100
 
-extern const int readConfig(char *config, int mode);
+extern const int readConfig(char *config, int mode, const char *fPath);
 extern void printLastError();
 
 //Legge dal file di configurazioni il valore della char *config con la modalità
-const int readConfig(char *config, int mode) {
-    FILE *fConf = fopen("../config", "r");
+const int readConfig(char *config, int mode, const char *fPath) {
+    FILE *fConf = fopen(fPath, "r");
     if (fConf == NULL) {
         return -1;
     }
