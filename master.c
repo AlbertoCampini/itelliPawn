@@ -14,7 +14,7 @@ int main(){
                 execve(NAME,args,NULL);
             break;
         }
-            //printf("Sono il proc master\n");
+
 
     }
     while((pidChild = wait(NULL)) != -1) {

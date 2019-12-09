@@ -11,12 +11,10 @@ int main(){
             printf("ciao sonbo la pedina %d %d \n", i, getppid());
             break;
         }
-        //printf("Sono il proc master\n");
 
     }
     while((pidChild = wait(NULL)) != -1) {
 
-        //attendo che tutti i processi creati muoiano
     }
 
 
