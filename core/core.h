@@ -7,6 +7,7 @@
 #include <sys/msg.h>
 #include <sys/sem.h>
 
+#define ERROR printLastError()
 #define EASY_MODE 0
 #define HARD_MODE 1
 #define MAX_LINE_CONF 100
@@ -29,14 +30,15 @@ extern int removeQueue(int id);
 extern int sendMessage(int idMsg, long msgType, SyncGamer syncGamer);
 extern int receiveMessage(int idMsg, long msgType, void *msg);
 
+#if defined(__linux__)
 union semun {
     int val;
     struct semid_ds *buf;
     unsigned short *array;
-#if defined(__linux__)
     struct seminfo *_buf;
+    };
 #endif
-};
+
 extern int createAndInitSems(key_t semKey, const int nSems, unsigned short valInit);
 extern int removeSem(int semId);
 extern int modifySem(int semId, int semNum, const int num);

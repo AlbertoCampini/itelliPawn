@@ -2,7 +2,6 @@
 #include <unistd.h>
 #include <sys/ipc.h>
 #include <sys/shm.h>
-#define ERROR printLastError()
 
 #define CONF_FILE_PATH "./config"
 
@@ -14,7 +13,7 @@ int main() {
     char *args[4];
     char bufferIdMsg[MAX_BUFF_SIZE], bufferIdSem[MAX_BUFF_SIZE];
 
-    //Leggo dal file di config
+    /*Leggo dal file di config*/
     SO_NUM_G = readConfig("SO_NUM_G", HARD_MODE, CONF_FILE_PATH);
     if(SO_NUM_G < 0){ ERROR; return 0; }
     SO_BASE = readConfig("SO_BASE", EASY_MODE, CONF_FILE_PATH);
@@ -22,23 +21,23 @@ int main() {
     SO_ALTEZZA = readConfig("SO_ALTEZZA", EASY_MODE, CONF_FILE_PATH);
     if(SO_ALTEZZA < 0){ ERROR; return 0; }
 
-    //ottengo il puntatore alla mem condivisa di dimensione SO_ALTEZZA * SO_BASE
-    //shm_id = shmget(IPC_PRIVATE, SO_ALTEZZA*SO_BASE*sizeof(int), IPC_CREAT | 0666);
+    /*ottengo il puntatore alla mem condivisa di dimensione SO_ALTEZZA * SO_BASE*/
+    /*shm_id = shmget(IPC_PRIVATE, SO_ALTEZZA*SO_BASE*sizeof(int), IPC_CREAT | 0666);*/
 
-    //Istanzio la coda di messaggi privata tra Master e Gamer
+    /*Istanzio la coda di messaggi privata tra Master e Gamer*/
     idMsgGamer = createMsgQueue(IPC_PRIVATE);
     if(!idMsgGamer) {
         printf("Errore creazione coda: ");ERROR;
         return 0;
     }
 
-    //Istanzio il set di semafori per la fase di posizionamento pedine
+    /*Istanzio il set di semafori per la fase di posizionamento pedine*/
     idSemGamer = createAndInitSems(IPC_PRIVATE, SO_NUM_G, 1);
     if(!idSemGamer) {
         printf("Errore creazione semafori: ");ERROR;
         return 0;
     }
-    //Prendo un semaforo random nel set e lo "rilascio" con 0
+    /*Prendo un semaforo random nel set e lo "rilascio" con 0*/
     if(!modifySem(idSemGamer, generateRandom(0, SO_NUM_G - 1), -1)) {
         printf("Errore set semaforo a 0: ");ERROR;
         return 0;
