@@ -6,6 +6,7 @@
 #include <sys/types.h>
 #include <sys/msg.h>
 #include <sys/sem.h>
+#include <sys/shm.h>
 
 #define ERROR printLastError()
 #define EASY_MODE 0
@@ -15,20 +16,18 @@
 #define NAME_GAMER_PROCESS "gamer"
 #define NAME_PAWN_PROCESS "pawn"
 
+/*CORE FUNCTION*/
 extern const int readConfig(char *config, int mode, const char *fPath);
 extern void printLastError();
 extern int generateRandom(int to, int from);
+extern void printMatrix(int *matrix, const int base, const int higth);
 
+/*CORE STRUCT*/
 typedef struct {
     long mtype;
     int order;
     char *strategy;
 } SyncGamer;
-
-extern int createMsgQueue(key_t key);
-extern int removeQueue(int id);
-extern int sendMessage(int idMsg, long msgType, SyncGamer syncGamer);
-extern int receiveMessage(int idMsg, long msgType, void *msg);
 
 #if defined(__linux__)
 union semun {
@@ -36,13 +35,27 @@ union semun {
     struct semid_ds *buf;
     unsigned short *array;
     struct seminfo *_buf;
-    };
+};
 #endif
 
+/*IPC QUEUE*/
+extern int createMsgQueue(key_t key);
+extern int removeQueue(int id);
+extern int sendMessage(int idMsg, long msgType, SyncGamer syncGamer);
+extern int receiveMessage(int idMsg, long msgType, void *msg);
+
+/*IPC SEMAPHORE*/
 extern int createAndInitSems(key_t semKey, const int nSems, unsigned short valInit);
 extern int removeSem(int semId);
 extern int modifySem(int semId, int semNum, const int num);
 extern int waitSem(int semId, int semNum);
+extern int waitSemWithoutWait(int semId, int semNum);
+
+/*IPC SHARED MEMORY*/
+extern int createSHM(key_t key, size_t dim);
+extern int removeSHM(int idSHM);
+extern void *attachSHM(int idSHM);
+extern void initSHM(int *matrix, const int base, const int higth, const int valInit);
 
 
 int generateRandom(int to, int from) {
@@ -75,6 +88,22 @@ const int readConfig(char *config, int mode, const char *fPath) {
 }
 void printLastError() {
     printf("%s\n", strerror(errno));
+}
+void printMatrix(int *matrix, const int base, const int higth) {
+    int i;
+    printf("|");
+    for(i = 0; i < (base * higth); i++) {
+        if((i % base) == 0 && i != 0) {
+            printf("\n");
+            printf("|");
+        }
+        if(matrix[i] == 0) {
+                printf(" |");
+        } else {
+            printf("%d|", matrix[i]);
+        }
+    }
+    printf("\n");
 }
 
 
@@ -149,4 +178,38 @@ int waitSem(int semId, int semNum) {
         return 0;
     }
     return 1;
+}
+int waitSemWithoutWait(int semId, int semNum) {
+    struct sembuf sOps[1];
+    sOps[0].sem_num = semNum;
+    sOps[0].sem_op = 0;
+    sOps[0].sem_flg = IPC_NOWAIT;
+    if(semop(semId, sOps, 1) < 0) {
+        return 0;
+    }
+    return 1;
+}
+
+int createSHM(key_t key, size_t dim) {
+    int idSHM = shmget(key, dim, IPC_CREAT | IPC_EXCL);
+    if(idSHM < 0) {
+        return 0;
+    }
+    return idSHM;
+}
+void *attachSHM(int idSHM) {
+    void *addressSHM = shmat(idSHM, NULL, 0);
+    return addressSHM;
+}
+int removeSHM(int idSHM) {
+    if(shmctl(idSHM, IPC_RMID, 0) < 0) {
+        return 0;
+    }
+    return 1;
+}
+void initSHM(int *matrix, const int base, const int higth, const int valInit) {
+    int i;
+    for(i = 0; i < (base * higth); i++) {
+        matrix[i] = valInit;
+    }
 }
