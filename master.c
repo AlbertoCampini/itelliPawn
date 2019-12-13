@@ -1,16 +1,17 @@
 #include "lib/core.h"
+#include "lib/strategy.h"
 #include <unistd.h>
 
 #define CONF_FILE_PATH "./config"
-#define ARGS_TO_PASS_OF_GAMER 6
+#define ARGS_TO_PASS_OF_GAMER 7
 
 int main() {
     srand(time(NULL));
 
     pid_t pidChild;
-    int i, idMatrix, idMsgGamer, idSemGamer, idSemMatrix, statusFork, SO_NUM_G, SO_BASE, SO_ALTEZZA;
+    int i, numFlags, idMatrix, idMsgGamer, idSemGamer, idSemMatrix, idSemSyncRound, statusFork, SO_NUM_G, SO_BASE, SO_ALTEZZA, SO_FLAG_MIN, SO_FLAG_MAX;
     char *argsToGamer[ARGS_TO_PASS_OF_GAMER];
-    char bufferIdMsg[MAX_BUFF_SIZE], bufferIdSemGamer[MAX_BUFF_SIZE], bufferIdSemMatrix[MAX_BUFF_SIZE], bufferIdMatrix[MAX_BUFF_SIZE];
+    char bufferIdMsg[MAX_BUFF_SIZE], bufferIdSemGamer[MAX_BUFF_SIZE], bufferIdSemMatrix[MAX_BUFF_SIZE], bufferIdMatrix[MAX_BUFF_SIZE], bufferIdSemSyncRound[MAX_BUFF_SIZE];
     int *matrix;
 
     /*Leggo dal file di config*/
@@ -20,6 +21,11 @@ int main() {
     if(SO_BASE < 0){ ERROR; return 0; }
     SO_ALTEZZA = readConfig("SO_ALTEZZA", HARD_MODE, CONF_FILE_PATH);
     if(SO_ALTEZZA < 0){ ERROR; return 0; }
+    SO_FLAG_MIN = readConfig("SO_FLAG_MIN", HARD_MODE, CONF_FILE_PATH);
+    if(SO_FLAG_MIN < 0){ ERROR; return 0; }
+    SO_FLAG_MAX = readConfig("SO_FLAG_MAX", HARD_MODE, CONF_FILE_PATH);
+    if(SO_FLAG_MAX < 0){ ERROR; return 0; }
+
 
     /*Ottengo il puntatore alla mem condivisa di dimensione SO_ALTEZZA * SO_BASE*/
     idMatrix = createSHM(IPC_PRIVATE, (SO_ALTEZZA * SO_BASE) * sizeof(int));
@@ -61,6 +67,16 @@ int main() {
         return 0;
     }
 
+    /*Istanzio il set di semafori per aspettare che i Gamer finiscono la fase di posizionamento pedine*/
+    idSemSyncRound = createAndInitSems(IPC_PRIVATE, 4, SO_NUM_G);/*SEM1: Gamer posiziona i Pawns*/
+    if(!idSemSyncRound) {
+        printf("Errore creazione semafori giocatori: ");ERROR;
+        return 0;
+    }
+    if(!modifySem(idSemSyncRound, 1, -(SO_NUM_G - 1))) { ERROR; return 0; }/*SEM2: Master finisce le bandierine*/
+    if(!modifySem(idSemSyncRound, 2, -SO_NUM_G)) { ERROR; return 0; }/*SEM3: Gamer fornisce strategie ai Pawns*/
+    if(!modifySem(idSemSyncRound, 3, -SO_NUM_G)) { ERROR; return 0; }/*SEM4: Avvio round*/
+
     /*INVOCO I GIOCATORI*/
     for(i = 0; i < SO_NUM_G; i++) {
         statusFork = fork();
@@ -69,12 +85,14 @@ int main() {
             sprintf(bufferIdSemGamer, "%d", idSemGamer);
             sprintf(bufferIdSemMatrix, "%d", idSemMatrix);
             sprintf(bufferIdMatrix, "%d", idMatrix);
+            sprintf(bufferIdSemSyncRound, "%d", idSemSyncRound);
             argsToGamer[0] = NAME_GAMER_PROCESS;
             argsToGamer[1] = bufferIdMsg;
             argsToGamer[2] = bufferIdSemGamer;
             argsToGamer[3] = bufferIdSemMatrix;
             argsToGamer[4] = bufferIdMatrix;
-            argsToGamer[5] = NULL;
+            argsToGamer[5] = bufferIdSemSyncRound;
+            argsToGamer[6] = NULL;
             execve(NAME_GAMER_PROCESS, argsToGamer, NULL);
             break;
         } else if(statusFork == -1){
@@ -88,16 +106,33 @@ int main() {
             syncGamer.name = i + 1;
             if(!sendMessage(idMsgGamer, statusFork, syncGamer)) {
                 printf("Errore send messaggio: ");
-                printLastError();
+                ERROR;
             }
         }
     }
+
+    /*POSIZIONO LE BANDIERINE*/
+    /*1) Attendo che tutti i giocatori posizionino le pedine*/
+    if(!waitSem(idSemSyncRound, 0)) {ERROR; return 0;}
+
+    /*2) Posiziono le bandierine*/
+    numFlags = generateRandom(SO_FLAG_MIN, SO_FLAG_MAX);
+    for(i = 0; i < numFlags; i++) {
+        *(matrix + positionStrategy(POS_STRATEGY_RANDOM, idSemMatrix, SO_BASE, SO_ALTEZZA)) = -1;
+    }
+
+    /*3) Dichiaro che ho posizionato le bandierine ai Gamer --> SEM2*/
+    if(!modifySem(idSemSyncRound, 1, -1)) { ERROR; return 0; }
+    /*4) Attendo che i Gamer forniscano la strategia ai Pawns*/
+    /*5) Avvio il round*/
+
 
     while((pidChild = wait(NULL)) != -1) {
     }
 
     printMatrix(matrix, SO_BASE, SO_ALTEZZA);
 
+    removeSem(idSemSyncRound);
     removeSem(idSemMatrix);
     removeSem(idSemGamer);
     removeQueue(idMsgGamer);

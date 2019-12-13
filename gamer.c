@@ -8,7 +8,7 @@ int main(int argc, char *argv[]) {
     srand(time(NULL));
 
     pid_t pidChild;
-    int i, SO_NUM_P, SO_NUM_G, SO_BASE, SO_ALTEZZA, idMsgGamer, idSemMaster, idSemMatrix, idMatrix, statusFork;
+    int i, SO_NUM_P, SO_NUM_G, SO_BASE, SO_ALTEZZA, idMsgGamer, idSemMaster, idSemMatrix, idMatrix, idSemSyncRound, statusFork;
     int *matrix;
     char *args[] = {NAME_PAWN_PROCESS, NULL};
     SyncGamer syncMaster;
@@ -31,6 +31,7 @@ int main(int argc, char *argv[]) {
     sscanf(argv[2], "%d", &idSemMaster);
     sscanf(argv[3], "%d", &idSemMatrix);
     sscanf(argv[4], "%d", &idMatrix);
+    sscanf(argv[5], "%d", &idSemSyncRound);
 
     matrix = (int *)attachSHM(idMatrix);
     if(matrix == (void *)-1) {
@@ -44,7 +45,7 @@ int main(int argc, char *argv[]) {
 
         /*2) Generazione strategia e posizionamento pedina*/
         *(matrix + positionStrategy(POS_STRATEGY_RANDOM, idSemMatrix, SO_BASE, SO_ALTEZZA)) = syncMaster.name;
-
+        /*Fork dei Pawns passando con execve le coordinate su Matrix*/
 
         /*3) Controllo sul giocatore successivo*/
         if((syncMaster.order + 1) < SO_NUM_G) {
@@ -59,6 +60,19 @@ int main(int argc, char *argv[]) {
         if(!modifySem(idSemMaster, syncMaster.order, 1)) {ERROR;}
     }
 
+    /*SEM1: Il Gamer ha finito di posizionare tutte le sue pedine e decrementa di 1 il semaforo del Master*/
+    if(!modifySem(idSemSyncRound, 0, -1)) {ERROR; return 0;}
+
+    /*SEM2: Attendo che il Master posizioni le Flags*/
+    if(!waitSem(idSemSyncRound, 1)) {ERROR;}
+    /*Mando il mex a tutti i Pawns con la strategia da utilizzare*/
+
+    /*Sblocco SEM3 dichiarando che il Gamer ha fornito la strategia*/
+
+    /*Attendo la morte di tutte le mie Pawns*/
+    /*while((pidChild = wait(NULL)) != -1) {
+    }*/
+
     /*for(i = 0; i < SO_NUM_P; i++) {
         statusFork = fork();
         if(statusFork == 0) {
@@ -70,9 +84,6 @@ int main(int argc, char *argv[]) {
             ERROR;
             break;
         }
-    }
-
-    while((pidChild = wait(NULL)) != -1) {
     }*/
 
     return 0;

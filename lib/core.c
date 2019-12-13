@@ -41,6 +41,11 @@ void printMatrix(int *matrix, const int base, const int higth) {
         }
         if(matrix[i] == 0) {
                 printf(" |");
+        } else if(matrix[i] == -1) {
+            printf("\033[0;31m");
+            printf("F");
+            printf("\033[0m");
+            printf("|");
         } else {
             printf("\033[0;35m");
             printf("%d", matrix[i]);
