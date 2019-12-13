@@ -2,26 +2,27 @@
 #include <unistd.h>
 
 #define CONF_FILE_PATH "./config"
+#define ARGS_TO_PASS_OF_GAMER 6
 
 int main() {
     srand(time(NULL));
 
     pid_t pidChild;
     int i, idMatrix, idMsgGamer, idSemGamer, idSemMatrix, statusFork, SO_NUM_G, SO_BASE, SO_ALTEZZA;
-    char *argsToGamer[6];
+    char *argsToGamer[ARGS_TO_PASS_OF_GAMER];
     char bufferIdMsg[MAX_BUFF_SIZE], bufferIdSemGamer[MAX_BUFF_SIZE], bufferIdSemMatrix[MAX_BUFF_SIZE], bufferIdMatrix[MAX_BUFF_SIZE];
     int *matrix;
 
     /*Leggo dal file di config*/
-    SO_NUM_G = readConfig("SO_NUM_G", EASY_MODE, CONF_FILE_PATH);
+    SO_NUM_G = readConfig("SO_NUM_G", HARD_MODE, CONF_FILE_PATH);
     if(SO_NUM_G < 0){ ERROR; return 0; }
-    SO_BASE = readConfig("SO_BASE", EASY_MODE, CONF_FILE_PATH);
+    SO_BASE = readConfig("SO_BASE", HARD_MODE, CONF_FILE_PATH);
     if(SO_BASE < 0){ ERROR; return 0; }
-    SO_ALTEZZA = readConfig("SO_ALTEZZA", EASY_MODE, CONF_FILE_PATH);
+    SO_ALTEZZA = readConfig("SO_ALTEZZA", HARD_MODE, CONF_FILE_PATH);
     if(SO_ALTEZZA < 0){ ERROR; return 0; }
 
     /*Ottengo il puntatore alla mem condivisa di dimensione SO_ALTEZZA * SO_BASE*/
-    idMatrix = createSHM(IPC_PRIVATE, (SO_ALTEZZA*SO_BASE) * sizeof(int));
+    idMatrix = createSHM(IPC_PRIVATE, (SO_ALTEZZA * SO_BASE) * sizeof(int));
     if(!idMatrix) {
         printf("Errore creazione Matrix: ");ERROR;
         return 0;
@@ -83,7 +84,8 @@ int main() {
         } else {
             SyncGamer syncGamer;
             syncGamer.order = i;
-            syncGamer.strategy = "Strategia";
+            syncGamer.strategy = 0;
+            syncGamer.name = i + 1;
             if(!sendMessage(idMsgGamer, statusFork, syncGamer)) {
                 printf("Errore send messaggio: ");
                 printLastError();

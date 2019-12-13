@@ -15,19 +15,16 @@ int main(int argc, char *argv[]) {
 
     /* 1) Devo ricevere le configurazioni SyncGamer dal Master*/
     sscanf(argv[1], "%d", &idMsgGamer);
-    if(!receiveMessage(idMsgGamer, getpid(), &syncMaster)) {
-        ERROR;
-        return 0;
-    }
+    if(!receiveMessage(idMsgGamer, getpid(), &syncMaster)) { ERROR; return 0; }
 
     /*Leggo dal file di config*/
-    SO_NUM_G = readConfig("SO_NUM_G", EASY_MODE, CONF_FILE_PATH);
+    SO_NUM_G = readConfig("SO_NUM_G", HARD_MODE, CONF_FILE_PATH);
     if(SO_NUM_G < 0) { ERROR; return 0; }
-    SO_NUM_P = readConfig("SO_NUM_P", EASY_MODE, CONF_FILE_PATH);
+    SO_NUM_P = readConfig("SO_NUM_P", HARD_MODE, CONF_FILE_PATH);
     if(SO_NUM_P < 0) { ERROR; return 0; }
-    SO_BASE = readConfig("SO_BASE", EASY_MODE, CONF_FILE_PATH);
+    SO_BASE = readConfig("SO_BASE", HARD_MODE, CONF_FILE_PATH);
     if(SO_BASE < 0){ ERROR; return 0; }
-    SO_ALTEZZA = readConfig("SO_ALTEZZA", EASY_MODE, CONF_FILE_PATH);
+    SO_ALTEZZA = readConfig("SO_ALTEZZA", HARD_MODE, CONF_FILE_PATH);
     if(SO_ALTEZZA < 0){ ERROR; return 0; }
 
     /*Acquisisco in input gli argomenti passati da Master*/
@@ -46,8 +43,7 @@ int main(int argc, char *argv[]) {
         if(!waitSem(idSemMaster, syncMaster.order)) {ERROR;}
 
         /*2) Generazione strategia e posizionamento pedina*/
-        //printf("Metto la pedina (%d)\n", syncMaster.order);
-        *(matrix + positionStrategy(POS_STRATEGY_RANDOM, idSemMatrix, SO_BASE, SO_ALTEZZA)) = 1;
+        *(matrix + positionStrategy(POS_STRATEGY_RANDOM, idSemMatrix, SO_BASE, SO_ALTEZZA)) = syncMaster.name;
 
 
         /*3) Controllo sul giocatore successivo*/
