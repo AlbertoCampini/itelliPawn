@@ -21,6 +21,7 @@
 #define YELLOW "\033[0;33m"
 #define GREEN "\033[0;32m"
 #define RESET_COLOR "\033[0m"
+#define PRINT_MATRIX printf("%d", matrix[i])
 
 /*CORE FUNCTION*/
 extern const int readConfig(char *config, int mode, const char *fPath);

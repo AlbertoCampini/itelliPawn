@@ -3,7 +3,7 @@
 int generateRandom(int to, int from) {
     return rand() % from + to;
 }
-//Legge dal file di configurazioni il valore della char *config con la modalità
+/*Legge dal file di configurazioni il valore della char *config con la modalità*/
 const int readConfig(char *config, int mode, const char *fPath) {
     FILE *fConf = fopen(fPath, "r");
     if (fConf == NULL) {
@@ -31,6 +31,8 @@ const int readConfig(char *config, int mode, const char *fPath) {
 void printLastError() {
     printf("%s\n", strerror(errno));
 }
+
+/*Define per output in core.h*/
 void printMatrix(int *matrix, const int base, const int higth) {
     int i;
     printf("|");
@@ -39,31 +41,38 @@ void printMatrix(int *matrix, const int base, const int higth) {
             printf("\n");
             printf("|");
         }
-        if(matrix[i] == 0) {
+        switch (matrix[i]){
+            case -1:
+                printf("F");
+                printf("|");
+                break;
+            case 0:
                 printf(" |");
-        } else if(matrix[i] == -1) {
-            printf("F");
-            printf("|");
-        } else if(matrix[i] == 2) {
-            printf(YELLOW);
-            printf("%d", matrix[i]);
-            printf(RESET_COLOR);
-            printf("|");
-        }  else if(matrix[i] == 3) {
-            printf(BLU);
-            printf("%d", matrix[i]);
-            printf(RESET_COLOR);
-            printf("|");
-        }  else if(matrix[i] == 4) {
-            printf(GREEN);
-            printf("%d", matrix[i]);
-            printf(RESET_COLOR);
-            printf("|");
-        }else {
-            printf(RED);
-            printf("%d", matrix[i]);
-            printf(RESET_COLOR);
-            printf("|");
+                break;
+            case 1:
+                printf(RED);
+                PRINT_MATRIX;
+                printf(RESET_COLOR);
+                printf("|");
+                break;
+            case 2:
+                printf(YELLOW);
+                PRINT_MATRIX;
+                printf(RESET_COLOR);
+                printf("|");
+                break;
+            case 3:
+                printf(BLU);
+                PRINT_MATRIX;
+                printf(RESET_COLOR);
+                printf("|");
+                break;
+            case 4:
+                printf(GREEN);
+                PRINT_MATRIX;
+                printf(RESET_COLOR);
+                printf("|");
+                break;
         }
     }
     printf("\n");
