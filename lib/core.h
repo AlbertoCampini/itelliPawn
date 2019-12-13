@@ -16,6 +16,12 @@
 #define NAME_GAMER_PROCESS "gamer"
 #define NAME_PAWN_PROCESS "pawn"
 
+#define BLU "\033[1;36m"
+#define RED "\033[0;31m"
+#define YELLOW "\033[0;33m"
+#define GREEN "\033[0;32m"
+#define RESET_COLOR "\033[0m"
+
 /*CORE FUNCTION*/
 extern const int readConfig(char *config, int mode, const char *fPath);
 extern void printLastError();

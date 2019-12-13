@@ -42,14 +42,27 @@ void printMatrix(int *matrix, const int base, const int higth) {
         if(matrix[i] == 0) {
                 printf(" |");
         } else if(matrix[i] == -1) {
-            printf("\033[0;31m");
             printf("F");
-            printf("\033[0m");
             printf("|");
-        } else {
-            printf("\033[0;35m");
+        } else if(matrix[i] == 2) {
+            printf(YELLOW);
             printf("%d", matrix[i]);
-            printf("\033[0m");
+            printf(RESET_COLOR);
+            printf("|");
+        }  else if(matrix[i] == 3) {
+            printf(BLU);
+            printf("%d", matrix[i]);
+            printf(RESET_COLOR);
+            printf("|");
+        }  else if(matrix[i] == 4) {
+            printf(GREEN);
+            printf("%d", matrix[i]);
+            printf(RESET_COLOR);
+            printf("|");
+        }else {
+            printf(RED);
+            printf("%d", matrix[i]);
+            printf(RESET_COLOR);
             printf("|");
         }
     }
