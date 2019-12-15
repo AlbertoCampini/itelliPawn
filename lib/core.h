@@ -9,7 +9,7 @@
 #include <sys/shm.h>
 
 #define ARGS_TO_PASS_OF_GAMER 7
-#define ARGS_TO_PASS_OF_PAWNS 6
+#define ARGS_TO_PASS_OF_PAWNS 7
 
 #define ERROR printLastError()
 #define EASY_MODE 0

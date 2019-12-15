@@ -8,10 +8,10 @@ int main(int argc, char *argv[]) {
     srand(time(NULL));
 
     pid_t pidChildKill;
-    int i, posInMatrix, SO_NUM_P, SO_NUM_G, SO_BASE, SO_ALTEZZA, idMsgGamer, idSemMaster, idSemMatrix, idMatrix, idSemSyncRound, statusFork, idMsgPawns;
+    int i, posInMatrix, SO_NUM_P, SO_NUM_G, SO_BASE, SO_ALTEZZA, idMsgGamer, idSemMaster, idSemMatrix, idMatrix, idSemSyncRound, idMsgPawns, statusFork;
     int *matrix, *pidChild;
     char *argsToPawn[ARGS_TO_PASS_OF_PAWNS];
-    char bufferIdSemMatrix[MAX_BUFF_SIZE], bufferIdMatrix[MAX_BUFF_SIZE], bufferPosInMatrix[MAX_BUFF_SIZE], bufferIdMsgPawns[MAX_BUFF_SIZE];
+    char bufferIdSemMatrix[MAX_BUFF_SIZE], bufferIdMatrix[MAX_BUFF_SIZE], bufferPosInMatrix[MAX_BUFF_SIZE], bufferIdMsgPawns[MAX_BUFF_SIZE], bufferIdSemSyncRound[MAX_BUFF_SIZE];
     SyncGamer syncMaster;   /*Ricevo dal Master*/
     SyncPawn syncPawn;      /*Invio al Pawn*/
 
@@ -71,12 +71,14 @@ int main(int argc, char *argv[]) {
             sprintf(bufferIdMatrix, "%d", idMatrix);
             sprintf(bufferPosInMatrix, "%d", posInMatrix);
             sprintf(bufferIdMsgPawns, "%d", idMsgPawns);
+            sprintf(bufferIdSemSyncRound, "%d", idSemSyncRound);
             argsToPawn[0] = NAME_PAWN_PROCESS;
             argsToPawn[1] = bufferIdMatrix;
             argsToPawn[2] = bufferIdSemMatrix;
             argsToPawn[3] = bufferPosInMatrix;
             argsToPawn[4] = bufferIdMsgPawns;
-            argsToPawn[5] = NULL;
+            argsToPawn[5] = bufferIdSemSyncRound;
+            argsToPawn[6] = NULL;
             execve(NAME_PAWN_PROCESS, argsToPawn, NULL);
             break;
         } else if(statusFork == -1) {
@@ -116,8 +118,6 @@ int main(int argc, char *argv[]) {
         }
     }
     free(pidChild);
-
-    /*Sblocco SEM3 dichiarando che il Gamer ha fornito la strategia*/
 
     /*Attendo la morte di tutte le mie Pawns*/
     while((pidChildKill = wait(NULL)) != -1) {

@@ -29,7 +29,7 @@ const int readConfig(char *config, int mode, const char *fPath) {
     return -1;
 }
 void printLastError() {
-    printf("%s\n", strerror(errno));
+    printf("[%s, %d]: %s\n", __FILE__, __LINE__, strerror(errno));
 }
 
 /*Define per output in core.h*/

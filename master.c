@@ -8,7 +8,7 @@ int main() {
     srand(time(NULL));
 
     pid_t pidChild;
-    int i, numFlags, idMatrix, idMsgGamer, idSemGamer, idSemMatrix, idSemSyncRound, statusFork, SO_NUM_G, SO_BASE, SO_ALTEZZA, SO_FLAG_MIN, SO_FLAG_MAX;
+    int i, numFlags, idMatrix, idMsgGamer, idSemGamer, idSemMatrix, idSemSyncRound, statusFork, SO_NUM_G, SO_NUM_P, SO_BASE, SO_ALTEZZA, SO_FLAG_MIN, SO_FLAG_MAX;
     char *argsToGamer[ARGS_TO_PASS_OF_GAMER];
     char bufferIdMsg[MAX_BUFF_SIZE], bufferIdSemGamer[MAX_BUFF_SIZE], bufferIdSemMatrix[MAX_BUFF_SIZE], bufferIdMatrix[MAX_BUFF_SIZE], bufferIdSemSyncRound[MAX_BUFF_SIZE];
     int *matrix;
@@ -16,6 +16,8 @@ int main() {
     /*Leggo dal file di config*/
     SO_NUM_G = readConfig("SO_NUM_G", HARD_MODE, CONF_FILE_PATH);
     if(SO_NUM_G < 0){ ERROR; return 0; }
+    SO_NUM_P = readConfig("SO_NUM_P", HARD_MODE, CONF_FILE_PATH);
+    if(SO_NUM_P < 0){ ERROR; return 0; }
     SO_BASE = readConfig("SO_BASE", HARD_MODE, CONF_FILE_PATH);
     if(SO_BASE < 0){ ERROR; return 0; }
     SO_ALTEZZA = readConfig("SO_ALTEZZA", HARD_MODE, CONF_FILE_PATH);
@@ -73,7 +75,7 @@ int main() {
         return 0;
     }
     if(!modifySem(idSemSyncRound, 1, -(SO_NUM_G - 1))) { ERROR; return 0; }/*SEM2: Master finisce le bandierine*/
-    if(!modifySem(idSemSyncRound, 2, -SO_NUM_G)) { ERROR; return 0; }/*SEM3: Gamer fornisce strategie ai Pawns*/
+    if(!modifySem(idSemSyncRound, 2, (SO_NUM_G * SO_NUM_P)-SO_NUM_G)) { ERROR; return 0; }/*SEM3: Gamer fornisce strategie ai Pawns*/
     if(!modifySem(idSemSyncRound, 3, -SO_NUM_G)) { ERROR; return 0; }/*SEM4: Avvio round*/
 
     /*INVOCO I GIOCATORI*/
@@ -122,7 +124,10 @@ int main() {
 
     /*3) Dichiaro che ho posizionato le bandierine ai Gamer --> SEM2*/
     if(!modifySem(idSemSyncRound, 1, -1)) { ERROR; return 0; }
+
     /*4) Attendo che i Gamer forniscano la strategia ai Pawns*/
+    if(!waitSem(idSemSyncRound, 2)) {ERROR; return 0;}
+
     /*5) Avvio il round*/
 
 
