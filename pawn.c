@@ -1,4 +1,6 @@
 #include "lib/core.h"
+#include <unistd.h>
+
 #define CONF_FILE_PATH "./config"
 
 int main(int argc, char *argv[]) {
@@ -17,6 +19,7 @@ int main(int argc, char *argv[]) {
 
     /*Devo ricevere le configurazioni SyncPawn dal Gamer*/
     if(!receiveMessageToGamer(idMsgPawns, getpid(), &syncPawn)) { ERROR; return 0; }
+
 
     return 0;
 }
