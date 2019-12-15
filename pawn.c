@@ -15,13 +15,8 @@ int main(int argc, char *argv[]) {
     sscanf(argv[3], "%d", &posInMatrix);
     sscanf(argv[4], "%d", &idMsgPawns);
 
-    printf("La coda ricevuta e' %d\n", idMsgPawns);
-
     /*Devo ricevere le configurazioni SyncPawn dal Gamer*/
-    printf("Sono il Pawn con PID %d\n", getpid());
-
     if(!receiveMessageToGamer(idMsgPawns, getpid(), &syncPawn)) { ERROR; return 0; }
-    printf("Ricevuto mex da Gamer\n");
 
     return 0;
 }

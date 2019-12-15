@@ -129,7 +129,7 @@ int main() {
     while((pidChild = wait(NULL)) != -1) {
     }
 
-    //printMatrix(matrix, SO_BASE, SO_ALTEZZA);
+    printMatrix(matrix, SO_BASE, SO_ALTEZZA);
 
     removeSem(idSemSyncRound);
     removeSem(idSemMatrix);

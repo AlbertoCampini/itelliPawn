@@ -60,7 +60,6 @@ int main(int argc, char *argv[]) {
     for(i = 0; i < SO_NUM_P; i++) {
         /*1) Attesa sul mio semaforo*/
         if(!waitSem(idSemMaster, syncMaster.order)) {ERROR;}
-        printf("---------%d---------\n", idMsgPawns);
 
         /*2) Generazione strategia e posizionamento pedina*/
         posInMatrix = positionStrategy(POS_STRATEGY_RANDOM, idSemMatrix, SO_BASE, SO_ALTEZZA);
@@ -87,7 +86,6 @@ int main(int argc, char *argv[]) {
         } else {
             /*Mi salvo il PID in un array*/
             *(pidChild + i) = statusFork;
-            printf("%d\n", statusFork);
         }
 
         /*3) Controllo sul giocatore successivo*/
@@ -112,11 +110,9 @@ int main(int argc, char *argv[]) {
     /*Mando il mex a tutti i Pawns con la strategia da utilizzare (SyncPawns)*/
     for(i = 0; i < SO_NUM_P; i++) {
         syncPawn.strategy = 1;
-        if(!sendMessageToPawns(idMsgGamer, *(pidChild + i), syncPawn)) {
+        if(!sendMessageToPawns(idMsgPawns, *(pidChild + i), syncPawn)) {
             printf("Errore send messaggio: ");
             ERROR;
-        } else {
-            printf("Inviato al Pawn con PID %d\n", *(pidChild + i));
         }
     }
     free(pidChild);
