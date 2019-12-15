@@ -7,15 +7,22 @@
 int main(int argc, char *argv[]) {
     srand(time(NULL));
 
-    pid_t pidChild;
-    int i, SO_NUM_P, SO_NUM_G, SO_BASE, SO_ALTEZZA, idMsgGamer, idSemMaster, idSemMatrix, idMatrix, idSemSyncRound, statusFork;
-    int *matrix;
-    char *args[] = {NAME_PAWN_PROCESS, NULL};
-    SyncGamer syncMaster;
+    pid_t pidChildKill;
+    int i, posInMatrix, SO_NUM_P, SO_NUM_G, SO_BASE, SO_ALTEZZA, idMsgGamer, idSemMaster, idSemMatrix, idMatrix, idSemSyncRound, statusFork, idMsgPawns;
+    int *matrix, *pidChild;
+    char *argsToPawn[ARGS_TO_PASS_OF_PAWNS];
+    char bufferIdSemMatrix[MAX_BUFF_SIZE], bufferIdMatrix[MAX_BUFF_SIZE], bufferPosInMatrix[MAX_BUFF_SIZE], bufferIdMsgPawns[MAX_BUFF_SIZE];
+    SyncGamer syncMaster;   /*Ricevo dal Master*/
+    SyncPawn syncPawn;      /*Invio al Pawn*/
 
-    /* 1) Devo ricevere le configurazioni SyncGamer dal Master*/
+    if(argc != (ARGS_TO_PASS_OF_GAMER - 1)) {
+        printf("Parametri passati insufficienti");
+        return 0;
+    }
+
+    /*Devo ricevere le configurazioni SyncGamer dal Master*/
     sscanf(argv[1], "%d", &idMsgGamer);
-    if(!receiveMessage(idMsgGamer, getpid(), &syncMaster)) { ERROR; return 0; }
+    if(!receiveMessageToMaster(idMsgGamer, getpid(), &syncMaster)) { ERROR; return 0; }
 
     /*Leggo dal file di config*/
     SO_NUM_G = readConfig("SO_NUM_G", HARD_MODE, CONF_FILE_PATH);
@@ -33,19 +40,55 @@ int main(int argc, char *argv[]) {
     sscanf(argv[4], "%d", &idMatrix);
     sscanf(argv[5], "%d", &idSemSyncRound);
 
+    /*Istanzio la coda di messaggi privata tra Gamer e Pawns*/
+    idMsgPawns = createMsgQueue(IPC_PRIVATE);
+    if(!idMsgPawns) {
+        printf("Errore creazione coda: ");ERROR;
+        return 0;
+    }
+
+    /*Attacco l'area del Matrix*/
     matrix = (int *)attachSHM(idMatrix);
     if(matrix == (void *)-1) {
         printf("Errore attach Matrix: ");ERROR;
         return 0;
     }
 
+    /*Allocazione dinamica di un array che contiene i PID dei Pawns*/
+    pidChild = (int *)malloc(sizeof(int) * SO_NUM_P);
+
     for(i = 0; i < SO_NUM_P; i++) {
         /*1) Attesa sul mio semaforo*/
         if(!waitSem(idSemMaster, syncMaster.order)) {ERROR;}
+        printf("---------%d---------\n", idMsgPawns);
 
         /*2) Generazione strategia e posizionamento pedina*/
-        *(matrix + positionStrategy(POS_STRATEGY_RANDOM, idSemMatrix, SO_BASE, SO_ALTEZZA)) = syncMaster.name;
+        posInMatrix = positionStrategy(POS_STRATEGY_RANDOM, idSemMatrix, SO_BASE, SO_ALTEZZA);
+        *(matrix + posInMatrix) = syncMaster.name;
         /*Fork dei Pawns passando con execve le coordinate su Matrix*/
+        statusFork = fork();
+        if(statusFork == 0) {
+            sprintf(bufferIdSemMatrix, "%d", idSemMatrix);
+            sprintf(bufferIdMatrix, "%d", idMatrix);
+            sprintf(bufferPosInMatrix, "%d", posInMatrix);
+            sprintf(bufferIdMsgPawns, "%d", idMsgPawns);
+            argsToPawn[0] = NAME_PAWN_PROCESS;
+            argsToPawn[1] = bufferIdMatrix;
+            argsToPawn[2] = bufferIdSemMatrix;
+            argsToPawn[3] = bufferPosInMatrix;
+            argsToPawn[4] = bufferIdMsgPawns;
+            argsToPawn[5] = NULL;
+            execve(NAME_PAWN_PROCESS, argsToPawn, NULL);
+            break;
+        } else if(statusFork == -1) {
+            printf("Errore durante la fork\n");
+            ERROR;
+            exit(0);
+        } else {
+            /*Mi salvo il PID in un array*/
+            *(pidChild + i) = statusFork;
+            printf("%d\n", statusFork);
+        }
 
         /*3) Controllo sul giocatore successivo*/
         if((syncMaster.order + 1) < SO_NUM_G) {
@@ -65,26 +108,25 @@ int main(int argc, char *argv[]) {
 
     /*SEM2: Attendo che il Master posizioni le Flags*/
     if(!waitSem(idSemSyncRound, 1)) {ERROR;}
-    /*Mando il mex a tutti i Pawns con la strategia da utilizzare*/
+
+    /*Mando il mex a tutti i Pawns con la strategia da utilizzare (SyncPawns)*/
+    for(i = 0; i < SO_NUM_P; i++) {
+        syncPawn.strategy = 1;
+        if(!sendMessageToPawns(idMsgGamer, *(pidChild + i), syncPawn)) {
+            printf("Errore send messaggio: ");
+            ERROR;
+        } else {
+            printf("Inviato al Pawn con PID %d\n", *(pidChild + i));
+        }
+    }
+    free(pidChild);
 
     /*Sblocco SEM3 dichiarando che il Gamer ha fornito la strategia*/
 
     /*Attendo la morte di tutte le mie Pawns*/
-    /*while((pidChild = wait(NULL)) != -1) {
-    }*/
+    while((pidChildKill = wait(NULL)) != -1) {
+    }
 
-    /*for(i = 0; i < SO_NUM_P; i++) {
-        statusFork = fork();
-        if(statusFork == 0) {
-            //printf("Pedina %d con pid %d \n", i, getppid());
-            execve(NAME_PAWN_PROCESS, args, NULL);
-            break;
-        } else if(statusFork == -1) {
-            printf("Errore durante la fork\n");
-            ERROR;
-            break;
-        }
-    }*/
-
+    removeQueue(idMsgPawns);
     return 0;
 }

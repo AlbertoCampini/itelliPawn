@@ -8,6 +8,9 @@
 #include <sys/sem.h>
 #include <sys/shm.h>
 
+#define ARGS_TO_PASS_OF_GAMER 7
+#define ARGS_TO_PASS_OF_PAWNS 6
+
 #define ERROR printLastError()
 #define EASY_MODE 0
 #define HARD_MODE 1
@@ -37,6 +40,11 @@ typedef struct {
     int strategy;
 } SyncGamer;
 
+typedef struct {
+    long mtype;
+    int strategy;
+} SyncPawn;
+
 #if defined(__linux__)
 union semun {
     int val;
@@ -49,8 +57,10 @@ union semun {
 /*IPC QUEUE*/
 extern int createMsgQueue(key_t key);
 extern int removeQueue(int id);
-extern int sendMessage(int idMsg, long msgType, SyncGamer syncGamer);
-extern int receiveMessage(int idMsg, long msgType, void *msg);
+extern int sendMessageToGamer(int idMsg, long msgType, SyncGamer syncGamer);
+extern int receiveMessageToMaster(int idMsg, long msgType, void *msg);
+extern int sendMessageToPawns(int idMsg, long msgType, SyncPawn syncPawn);
+extern int receiveMessageToGamer(int idMsg, long msgType, void *msg);
 
 /*IPC SEMAPHORE*/
 extern int createAndInitSems(key_t semKey, const int nSems, unsigned short valInit);

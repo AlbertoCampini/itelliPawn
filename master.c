@@ -3,7 +3,6 @@
 #include <unistd.h>
 
 #define CONF_FILE_PATH "./config"
-#define ARGS_TO_PASS_OF_GAMER 7
 
 int main() {
     srand(time(NULL));
@@ -104,7 +103,7 @@ int main() {
             syncGamer.order = i;
             syncGamer.strategy = 0;
             syncGamer.name = i + 1;
-            if(!sendMessage(idMsgGamer, statusFork, syncGamer)) {
+            if(!sendMessageToGamer(idMsgGamer, statusFork, syncGamer)) {
                 printf("Errore send messaggio: ");
                 ERROR;
             }
@@ -130,7 +129,7 @@ int main() {
     while((pidChild = wait(NULL)) != -1) {
     }
 
-    printMatrix(matrix, SO_BASE, SO_ALTEZZA);
+    //printMatrix(matrix, SO_BASE, SO_ALTEZZA);
 
     removeSem(idSemSyncRound);
     removeSem(idSemMatrix);

@@ -92,15 +92,30 @@ int removeQueue(int id) {
     }
     return 1;
 }
-int sendMessage(int id, long msgType, SyncGamer syncGamer) {
+int sendMessageToGamer(int idMsg, long msgType, SyncGamer syncGamer) {
     syncGamer.mtype = msgType;
-    if(msgsnd(id, &syncGamer, (sizeof(SyncGamer) - sizeof(long)), 0) < 0) {
+    if(msgsnd(idMsg, &syncGamer, (sizeof(SyncGamer) - sizeof(long)), 0) < 0) {
         return 0;
     }
     return 1;
 }
-int receiveMessage(int idMsg, long msgType, void *msg) {
+int receiveMessageToMaster(int idMsg, long msgType, void *msg) {
     if(msgrcv(idMsg, msg, (sizeof(SyncGamer) - sizeof(long)), msgType, 0) < 0) {
+        return 0;
+    }
+    return 1;
+}
+int sendMessageToPawns(int idMsg, long msgType, SyncPawn syncPawn) {
+    syncPawn.mtype = msgType;
+    if(msgsnd(idMsg, &syncPawn, (sizeof(SyncPawn) - sizeof(long)), 0) < 0) {
+        return 0;
+    }
+    printf("invio msgType: %ld\n", msgType);
+    return 1;
+}
+int receiveMessageToGamer(int idMsg, long msgType, void *msg) {
+    if(msgrcv(idMsg, msg, (sizeof(SyncPawn) - sizeof(long)), msgType, 0) < 0) {
+        printf("erorre, tipo ricevuto: %ld\n", msgType);
         return 0;
     }
     return 1;
