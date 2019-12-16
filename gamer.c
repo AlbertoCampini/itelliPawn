@@ -8,10 +8,10 @@ int main(int argc, char *argv[]) {
     srand(time(NULL));
 
     pid_t pidChildKill;
-    int i, posInMatrix, SO_NUM_P, SO_NUM_G, SO_BASE, SO_ALTEZZA, idMsgGamer, idSemMaster, idSemMatrix, idMatrix, idSemSyncRound, idMsgPawns, statusFork;
+    int i, posInMatrix, SO_NUM_P, SO_NUM_G, SO_BASE, SO_ALTEZZA, SO_N_MOVES, idMsgGamer, idSemMaster, idSemMatrix, idMatrix, idSemSyncRound, idMsgPawns, statusFork;
     int *matrix, *pidChild;
     char *argsToPawn[ARGS_TO_PASS_OF_PAWNS];
-    char bufferIdSemMatrix[MAX_BUFF_SIZE], bufferIdMatrix[MAX_BUFF_SIZE], bufferPosInMatrix[MAX_BUFF_SIZE], bufferIdMsgPawns[MAX_BUFF_SIZE], bufferIdSemSyncRound[MAX_BUFF_SIZE];
+    char bufferIdSemMatrix[MAX_BUFF_SIZE], bufferIdMatrix[MAX_BUFF_SIZE], bufferPosInMatrix[MAX_BUFF_SIZE], bufferIdMsgPawns[MAX_BUFF_SIZE], bufferIdSemSyncRound[MAX_BUFF_SIZE], buffGamerName[MAX_BUFF_SIZE];
     SyncGamer syncMaster;   /*Ricevo dal Master*/
     SyncPawn syncPawn;      /*Invio al Pawn*/
 
@@ -33,6 +33,8 @@ int main(int argc, char *argv[]) {
     if(SO_BASE < 0){ ERROR; return 0; }
     SO_ALTEZZA = readConfig("SO_ALTEZZA", HARD_MODE, CONF_FILE_PATH);
     if(SO_ALTEZZA < 0){ ERROR; return 0; }
+    SO_N_MOVES = readConfig("SO_N_MOVES", HARD_MODE, CONF_FILE_PATH);
+    if(SO_N_MOVES < 0){ ERROR; return 0; }
 
     /*Acquisisco in input gli argomenti passati da Master*/
     sscanf(argv[2], "%d", &idSemMaster);
@@ -72,13 +74,15 @@ int main(int argc, char *argv[]) {
             sprintf(bufferPosInMatrix, "%d", posInMatrix);
             sprintf(bufferIdMsgPawns, "%d", idMsgPawns);
             sprintf(bufferIdSemSyncRound, "%d", idSemSyncRound);
+            sprintf(buffGamerName, "%d", syncMaster.name);
             argsToPawn[0] = NAME_PAWN_PROCESS;
             argsToPawn[1] = bufferIdMatrix;
             argsToPawn[2] = bufferIdSemMatrix;
             argsToPawn[3] = bufferPosInMatrix;
             argsToPawn[4] = bufferIdMsgPawns;
             argsToPawn[5] = bufferIdSemSyncRound;
-            argsToPawn[6] = NULL;
+            argsToPawn[6] = buffGamerName;
+            argsToPawn[7] = NULL;
             execve(NAME_PAWN_PROCESS, argsToPawn, NULL);
             break;
         } else if(statusFork == -1) {
@@ -111,7 +115,8 @@ int main(int argc, char *argv[]) {
 
     /*Mando il mex a tutti i Pawns con la strategia da utilizzare (SyncPawns)*/
     for(i = 0; i < SO_NUM_P; i++) {
-        syncPawn.strategy = 1;
+        syncPawn.strategy = MOVES_STRATEGY_RANDOM;
+        syncPawn.nMoves = SO_N_MOVES;
         if(!sendMessageToPawns(idMsgPawns, *(pidChild + i), syncPawn)) {
             printf("Errore send messaggio: ");
             ERROR;

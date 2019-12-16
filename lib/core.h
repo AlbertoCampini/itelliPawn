@@ -9,7 +9,7 @@
 #include <sys/shm.h>
 
 #define ARGS_TO_PASS_OF_GAMER 7
-#define ARGS_TO_PASS_OF_PAWNS 7
+#define ARGS_TO_PASS_OF_PAWNS 8
 
 #define ERROR printLastError()
 #define EASY_MODE 0
@@ -19,7 +19,7 @@
 #define NAME_GAMER_PROCESS "gamer"
 #define NAME_PAWN_PROCESS "pawn"
 
-#define BLU "\033[1;36m"
+#define BLU "\033[0;34m"
 #define RED "\033[0;31m"
 #define YELLOW "\033[0;33m"
 #define GREEN "\033[0;32m"
@@ -38,12 +38,21 @@ typedef struct {
     int order;
     int name;
     int strategy;
+    int points;
 } SyncGamer;
 
 typedef struct {
     long mtype;
     int strategy;
+    int nMoves;
 } SyncPawn;
+
+typedef struct {
+    long mtype;
+    int points;
+    int nMovesLeft;
+    int nMovesDo;
+} ResultRound;
 
 #if defined(__linux__)
 union semun {

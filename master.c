@@ -4,14 +4,22 @@
 
 #define CONF_FILE_PATH "./config"
 
+typedef struct {
+    int points;
+    int nMovesLeft;
+    int nMovesDo;
+} DataGamer;
+
 int main() {
     srand(time(NULL));
 
     pid_t pidChild;
-    int i, numFlags, idMatrix, idMsgGamer, idSemGamer, idSemMatrix, idSemSyncRound, statusFork, SO_NUM_G, SO_NUM_P, SO_BASE, SO_ALTEZZA, SO_FLAG_MIN, SO_FLAG_MAX;
+    int i, numFlags, posFlag, idMatrix, idMsgGamer, idSemGamer, idSemMatrix, idSemSyncRound, statusFork, SO_NUM_G, SO_NUM_P, SO_BASE, SO_ALTEZZA, SO_FLAG_MIN, SO_FLAG_MAX, SO_N_MOVES;
     char *argsToGamer[ARGS_TO_PASS_OF_GAMER];
     char bufferIdMsg[MAX_BUFF_SIZE], bufferIdSemGamer[MAX_BUFF_SIZE], bufferIdSemMatrix[MAX_BUFF_SIZE], bufferIdMatrix[MAX_BUFF_SIZE], bufferIdSemSyncRound[MAX_BUFF_SIZE];
     int *matrix;
+    DataGamer *dataGamer; /*Array per ogni Gamer che tiene conto dei dati statistici*/
+    SyncGamer syncGamer; /*Invio al Gamer*/
 
     /*Leggo dal file di config*/
     SO_NUM_G = readConfig("SO_NUM_G", HARD_MODE, CONF_FILE_PATH);
@@ -26,7 +34,8 @@ int main() {
     if(SO_FLAG_MIN < 0){ ERROR; return 0; }
     SO_FLAG_MAX = readConfig("SO_FLAG_MAX", HARD_MODE, CONF_FILE_PATH);
     if(SO_FLAG_MAX < 0){ ERROR; return 0; }
-
+    SO_N_MOVES = readConfig("SO_N_MOVES", HARD_MODE, CONF_FILE_PATH);
+    if(SO_N_MOVES < 0){ ERROR; return 0; }
 
     /*Ottengo il puntatore alla mem condivisa di dimensione SO_ALTEZZA * SO_BASE*/
     idMatrix = createSHM(IPC_PRIVATE, (SO_ALTEZZA * SO_BASE) * sizeof(int));
@@ -76,9 +85,10 @@ int main() {
     }
     if(!modifySem(idSemSyncRound, 1, -(SO_NUM_G - 1))) { ERROR; return 0; }/*SEM2: Master finisce le bandierine*/
     if(!modifySem(idSemSyncRound, 2, (SO_NUM_G * SO_NUM_P)-SO_NUM_G)) { ERROR; return 0; }/*SEM3: Gamer fornisce strategie ai Pawns*/
-    if(!modifySem(idSemSyncRound, 3, -SO_NUM_G)) { ERROR; return 0; }/*SEM4: Avvio round*/
+    if(!modifySem(idSemSyncRound, 3, -(SO_NUM_G - 1))) { ERROR; return 0; }/*SEM4: Avvio round*/
 
     /*INVOCO I GIOCATORI*/
+    dataGamer = (DataGamer *)malloc(sizeof(DataGamer) * SO_NUM_G);
     for(i = 0; i < SO_NUM_G; i++) {
         statusFork = fork();
         if(statusFork == 0) {
@@ -101,14 +111,17 @@ int main() {
             printLastError();
             break;
         } else {
-            SyncGamer syncGamer;
             syncGamer.order = i;
             syncGamer.strategy = 0;
             syncGamer.name = i + 1;
+            syncGamer.points = 0;
             if(!sendMessageToGamer(idMsgGamer, statusFork, syncGamer)) {
                 printf("Errore send messaggio: ");
                 ERROR;
             }
+            (dataGamer + i)->points = 0;
+            (dataGamer + i)->nMovesDo = 0;
+            (dataGamer + i)->nMovesLeft = SO_N_MOVES * SO_NUM_P;
         }
     }
 
@@ -119,8 +132,17 @@ int main() {
     /*2) Posiziono le bandierine*/
     numFlags = generateRandom(SO_FLAG_MIN, SO_FLAG_MAX);
     for(i = 0; i < numFlags; i++) {
-        *(matrix + positionStrategy(POS_STRATEGY_RANDOM, idSemMatrix, SO_BASE, SO_ALTEZZA)) = -1;
+        posFlag = flagPositionStrategy(POS_STRATEGY_RANDOM, idSemMatrix, SO_BASE, SO_ALTEZZA);
+        while(*(matrix + posFlag) < 0) {
+            posFlag = flagPositionStrategy(POS_STRATEGY_RANDOM, idSemMatrix, SO_BASE, SO_ALTEZZA);
+        }
+        *(matrix + posFlag) = -1;
     }
+    /*Stampo la matrix e le metriche del punto 1.6*/
+    for(i = 0; i < SO_NUM_G; i++) {
+        printf("--Giocatore %d: punteggio %d, mosse residue %d\n", i+1, (dataGamer + i)->points, (dataGamer + i)->nMovesLeft);
+    }
+    printMatrix(matrix, SO_BASE, SO_ALTEZZA);
 
     /*3) Dichiaro che ho posizionato le bandierine ai Gamer --> SEM2*/
     if(!modifySem(idSemSyncRound, 1, -1)) { ERROR; return 0; }
@@ -129,13 +151,15 @@ int main() {
     if(!waitSem(idSemSyncRound, 2)) {ERROR; return 0;}
 
     /*5) Avvio il round*/
-
+    if(!modifySem(idSemSyncRound, 3, -1)) { ERROR; return 0; }
 
     while((pidChild = wait(NULL)) != -1) {
     }
 
+    printf("\n");
     printMatrix(matrix, SO_BASE, SO_ALTEZZA);
 
+    free(dataGamer);
     removeSem(idSemSyncRound);
     removeSem(idSemMatrix);
     removeSem(idSemGamer);
