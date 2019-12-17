@@ -14,6 +14,7 @@ int main(int argc, char *argv[]) {
     char bufferIdSemMatrix[MAX_BUFF_SIZE], bufferIdMatrix[MAX_BUFF_SIZE], bufferPosInMatrix[MAX_BUFF_SIZE], bufferIdMsgPawns[MAX_BUFF_SIZE], bufferIdSemSyncRound[MAX_BUFF_SIZE], buffGamerName[MAX_BUFF_SIZE];
     SyncGamer syncMaster;   /*Ricevo dal Master*/
     SyncPawn syncPawn;      /*Invio al Pawn*/
+    ResultRound resultRound, resultRoundGamer;
 
     if(argc != (ARGS_TO_PASS_OF_GAMER - 1)) {
         printf("Parametri passati insufficienti");
@@ -123,6 +124,21 @@ int main(int argc, char *argv[]) {
         }
     }
     free(pidChild);
+
+    /*Attendo di ricevere SO_NUM_P messaggi di resoconto del round*/
+    resultRoundGamer.points = 0;
+    resultRoundGamer.nMovesLeft = SO_N_MOVES * SO_NUM_P;
+    resultRoundGamer.nMovesDo = 0;
+    for(i = 0; i < SO_NUM_P; i++) {
+        if(!receiveMessageResultRound(idMsgPawns, 1, &resultRound)) { ERROR; return 0; }
+        resultRoundGamer.points += resultRound.points;
+        resultRoundGamer.nMovesLeft -= resultRound.nMovesDo;
+        resultRoundGamer.nMovesDo += resultRound.nMovesDo;
+    }
+    /*Mando il resoconto del round al Master*/
+    if(!sendMessageResultRound(idMsgGamer, 1, resultRoundGamer)) {
+        ERROR;
+    }
 
     /*Attendo la morte di tutte le mie Pawns*/
     while((pidChildKill = wait(NULL)) != -1) {

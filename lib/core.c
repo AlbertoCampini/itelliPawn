@@ -35,44 +35,49 @@ void printLastError() {
 /*Define per output in core.h*/
 void printMatrix(int *matrix, const int base, const int higth) {
     int i;
-    printf("|");
+    printf("\n|");
     for(i = 0; i < (base * higth); i++) {
         if((i % base) == 0 && i != 0) {
             printf("\n");
             printf("|");
         }
-        switch (matrix[i]){
-            case -1:
-                printf("F");
-                printf("|");
-                break;
-            case 0:
-                printf(" |");
-                break;
-            case 1:
-                printf(RED);
-                PRINT_MATRIX;
-                printf(RESET_COLOR);
-                printf("|");
-                break;
-            case 2:
-                printf(YELLOW);
-                PRINT_MATRIX;
-                printf(RESET_COLOR);
-                printf("|");
-                break;
-            case 3:
-                printf(BLU);
-                PRINT_MATRIX;
-                printf(RESET_COLOR);
-                printf("|");
-                break;
-            case 4:
-                printf(GREEN);
-                PRINT_MATRIX;
-                printf(RESET_COLOR);
-                printf("|");
-                break;
+        if(matrix[i] < 0) {
+            printf("F");
+            printf("|");
+        } else if(matrix[i] == 0) {
+            printf(" |");
+        } else {
+            switch (matrix[i]){
+                case 1:
+                    printf(RED);
+                    PRINT_MATRIX;
+                    printf(RESET_COLOR);
+                    printf("|");
+                    break;
+                case 2:
+                    printf(YELLOW);
+                    PRINT_MATRIX;
+                    printf(RESET_COLOR);
+                    printf("|");
+                    break;
+                case 3:
+                    printf(BLU);
+                    PRINT_MATRIX;
+                    printf(RESET_COLOR);
+                    printf("|");
+                    break;
+                case 4:
+                    printf(GREEN);
+                    PRINT_MATRIX;
+                    printf(RESET_COLOR);
+                    printf("|");
+                    break;
+                default:
+                    printf(RESET_COLOR);
+                    PRINT_MATRIX;
+                    printf("|");
+                    break;
+            }
         }
     }
     printf("\n");
@@ -114,6 +119,19 @@ int sendMessageToPawns(int idMsg, long msgType, SyncPawn syncPawn) {
 }
 int receiveMessageToGamer(int idMsg, long msgType, void *msg) {
     if(msgrcv(idMsg, msg, (sizeof(SyncPawn) - sizeof(long)), msgType, 0) < 0) {
+        return 0;
+    }
+    return 1;
+}
+int sendMessageResultRound(int idMsg, long msgType, ResultRound resultRound) {
+    resultRound.mtype = msgType;
+    if(msgsnd(idMsg, &resultRound, (sizeof(ResultRound) - sizeof(long)), 0) < 0) {
+        return 0;
+    }
+    return 1;
+}
+int receiveMessageResultRound(int idMsg, long msgType, void *msg) {
+    if(msgrcv(idMsg, msg, (sizeof(ResultRound) - sizeof(long)), msgType, 0) < 0) {
         return 0;
     }
     return 1;
@@ -173,6 +191,10 @@ int waitSemWithoutWait(int semId, int semNum) {
         return 0;
     }
     return 1;
+}
+int getValueOfSem(int semId, int semNum) {
+    int valSem = semctl(semId, semNum, GETVAL);
+    return valSem;
 }
 
 int createSHM(key_t key, size_t dim) {

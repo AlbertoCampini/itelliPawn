@@ -10,4 +10,4 @@
 int pointer2LinearArray(const int x, const int y, const int base);
 int positionStrategy(int strategy, int idSemMatrix, const int base, const int higth);
 int flagPositionStrategy(int strategy, int idSemMatrix, const int base, const int higth);
-int movesStrategy(int strategy, int idSemMatrix, const int actualPos, const int base, const int higth);
+int movesStrategy(int strategy, int idSemMatrix, int idSemFlags, const int actualPos, const int base, const int higth);

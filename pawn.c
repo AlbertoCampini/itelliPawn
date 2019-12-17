@@ -5,9 +5,10 @@
 #define CONF_FILE_PATH "./config"
 
 int main(int argc, char *argv[]) {
-    int i, SO_BASE, SO_ALTEZZA, SO_MIN_HOLD_NSEC, gamerName, nMoves, posInMatrix, idSemMatrix, idMatrix, idMsgPawns, idSemSyncRound;
+    int i, points, SO_BASE, SO_ALTEZZA, SO_MIN_HOLD_NSEC, gamerName, nMoves, posInMatrix, idSemMatrix, idMatrix, idMsgPawns, idSemSyncRound;
     int *matrix;
     SyncPawn syncGamer; /*Ricevo dal Gamer*/
+    ResultRound resultRound;
     struct timespec tim;
 
 
@@ -50,12 +51,34 @@ int main(int argc, char *argv[]) {
     /*Attendo l'inizio round*/
     if(!waitSem(idSemSyncRound, 3)) {ERROR; return 0;}
 
-    for(i = 0; i < nMoves; i++) {
+    i = points = 0;
+    while(!waitSemWithoutWait(idSemSyncRound, 4) && i < nMoves) {
+        /*Pulisco la posizione precedente*/
         *(matrix + posInMatrix) = 0;
-        posInMatrix = movesStrategy(syncGamer.strategy, idSemMatrix, posInMatrix, SO_BASE, SO_ALTEZZA);
-        *(matrix + posInMatrix) = gamerName;
-        nanosleep(&tim, NULL);
 
+        /*Trovo la nuova posizione*/
+        posInMatrix = movesStrategy(syncGamer.strategy, idSemMatrix, idSemSyncRound, posInMatrix, SO_BASE, SO_ALTEZZA);
+
+        if(posInMatrix >= 0) {
+            if(*(matrix + posInMatrix) < 0) {
+                /*Ho preso una Flags*/
+                points += (*(matrix + posInMatrix) * -1);
+                if(!modifySem(idSemSyncRound, 4, -1)) { ERROR; }
+                /*printf("Ho preso la bandierina %d (%d, %d, %d)\n", (*(matrix + posInMatrix) * -1), gamerName, nMoves - i, getValueOfSem(idSemSyncRound, 4));*/
+            }
+
+            *(matrix + posInMatrix) = gamerName;
+            nanosleep(&tim, NULL);
+            i++;
+        }
+    }
+
+    /*Invio il resoconto al mio Gamer*/
+    resultRound.points = points;
+    resultRound.nMovesLeft = nMoves - i;
+    resultRound.nMovesDo = i;
+    if(!sendMessageResultRound(idMsgPawns, 1, resultRound)) {
+            ERROR;
     }
 
     return 0;

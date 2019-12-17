@@ -49,21 +49,26 @@ int positionStrategyRandom(int idSemMatrix, const int base, const int higth) {
 }
 
 
-int movesStrategy(int strategy, int idSemMatrix, const int actualPos, const int base, const int higth) {
+int movesStrategy(int strategy, int idSemMatrix, int idSemFlags, const int actualPos, const int base, const int higth) {
     switch(strategy) {
         case MOVES_STRATEGY_RANDOM:
-            return movesStrategyRandom(idSemMatrix, actualPos, base, higth);
+            return movesStrategyRandom(idSemMatrix, idSemFlags, actualPos, base, higth);
             break;
         default:
             return -1;
             break;
     }
 }
-int movesStrategyRandom(int idSemMatrix, const int actualPos, const int base, const int higth) {
+int movesStrategyRandom(int idSemMatrix, int idSemFlags, const int actualPos, const int base, const int higth) {
     int move = generateRandom(0, 3);
     int newPos;
-    while((newPos = findCorrectPos(move, actualPos, base, higth)) == -1 || !waitSemWithoutWait(idSemMatrix, newPos)) {
+    while(((newPos = findCorrectPos(move, actualPos, base, higth)) == -1 || !waitSemWithoutWait(idSemMatrix, newPos)) && !waitSemWithoutWait(idSemFlags, 4)) {
         move = generateRandom(0, 3);
+    }
+
+    /*Se sono uscito dal while perchè tutte le Flags sono state prese non devo tornare una nuova posizione*/
+    if(waitSemWithoutWait(idSemFlags, 4)) {
+        return -1;
     }
     /*Blocco il semaforo della nuova posizione*/
     if(!modifySem(idSemMatrix, newPos, 1)) {

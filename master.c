@@ -20,6 +20,7 @@ int main() {
     int *matrix;
     DataGamer *dataGamer; /*Array per ogni Gamer che tiene conto dei dati statistici*/
     SyncGamer syncGamer; /*Invio al Gamer*/
+    ResultRound resultRound;
 
     /*Leggo dal file di config*/
     SO_NUM_G = readConfig("SO_NUM_G", HARD_MODE, CONF_FILE_PATH);
@@ -78,7 +79,7 @@ int main() {
     }
 
     /*Istanzio il set di semafori per aspettare che i Gamer finiscono la fase di posizionamento pedine*/
-    idSemSyncRound = createAndInitSems(IPC_PRIVATE, 4, SO_NUM_G);/*SEM1: Gamer posiziona i Pawns*/
+    idSemSyncRound = createAndInitSems(IPC_PRIVATE, 5, SO_NUM_G);/*SEM1: Gamer posiziona i Pawns*/
     if(!idSemSyncRound) {
         printf("Errore creazione semafori giocatori: ");ERROR;
         return 0;
@@ -131,13 +132,18 @@ int main() {
 
     /*2) Posiziono le bandierine*/
     numFlags = generateRandom(SO_FLAG_MIN, SO_FLAG_MAX);
+    printf("Ho posizionato %d flags tra %d e %d\n", numFlags, SO_FLAG_MIN, SO_FLAG_MAX);
+
     for(i = 0; i < numFlags; i++) {
         posFlag = flagPositionStrategy(POS_STRATEGY_RANDOM, idSemMatrix, SO_BASE, SO_ALTEZZA);
         while(*(matrix + posFlag) < 0) {
             posFlag = flagPositionStrategy(POS_STRATEGY_RANDOM, idSemMatrix, SO_BASE, SO_ALTEZZA);
         }
-        *(matrix + posFlag) = -1;
+        *(matrix + posFlag) = ((i + 1) * -1);
     }
+    /*SEM5: Semaforo per sapere quando sono state prese tutte le flags (è inizializzato al numero di bandierine)*/
+    if(!modifySem(idSemSyncRound, 4, (-(SO_NUM_G) + numFlags))) { ERROR; return 0; }
+
     /*Stampo la matrix e le metriche del punto 1.6*/
     for(i = 0; i < SO_NUM_G; i++) {
         printf("--Giocatore %d: punteggio %d, mosse residue %d\n", i+1, (dataGamer + i)->points, (dataGamer + i)->nMovesLeft);
@@ -153,10 +159,19 @@ int main() {
     /*5) Avvio il round*/
     if(!modifySem(idSemSyncRound, 3, -1)) { ERROR; return 0; }
 
+    /*Attendo di ricevere SO_NUM_G messaggi di resoconto del round*/
+    printf("\n");
+    for(i = 0; i < SO_NUM_G; i++) {
+        if(!receiveMessageResultRound(idMsgGamer, 1, &resultRound)) { ERROR; return 0; }
+        printf("--Giocatore %d [points: %d, nMovesLeft: %d, nMovesDo: %d]\n", (i + 1), resultRound.points, resultRound.nMovesLeft, resultRound.nMovesDo);
+    }
+
     while((pidChild = wait(NULL)) != -1) {
     }
 
-    printf("\n");
+    if(waitSemWithoutWait(idSemSyncRound, 4)) {
+        printf("\nTutte le %d bandierine sono state prese!\n", numFlags - getValueOfSem(idSemSyncRound, 4));
+    }
     printMatrix(matrix, SO_BASE, SO_ALTEZZA);
 
     free(dataGamer);

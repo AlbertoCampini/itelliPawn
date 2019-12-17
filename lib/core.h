@@ -70,11 +70,14 @@ extern int sendMessageToGamer(int idMsg, long msgType, SyncGamer syncGamer);
 extern int receiveMessageToMaster(int idMsg, long msgType, void *msg);
 extern int sendMessageToPawns(int idMsg, long msgType, SyncPawn syncPawn);
 extern int receiveMessageToGamer(int idMsg, long msgType, void *msg);
+extern int sendMessageResultRound(int idMsg, long msgType, ResultRound resultRound);
+extern int receiveMessageResultRound(int idMsg, long msgType, void *msg);
 
 /*IPC SEMAPHORE*/
 extern int createAndInitSems(key_t semKey, const int nSems, unsigned short valInit);
 extern int removeSem(int semId);
 extern int modifySem(int semId, int semNum, const int num);
+extern int getValueOfSem(int semId, int semNum);
 extern int waitSem(int semId, int semNum);
 extern int waitSemWithoutWait(int semId, int semNum);
 
