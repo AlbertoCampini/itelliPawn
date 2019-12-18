@@ -7,6 +7,7 @@
 #include <sys/msg.h>
 #include <sys/sem.h>
 #include <sys/shm.h>
+#include <sys/signal.h>
 
 #define ARGS_TO_PASS_OF_GAMER 7
 #define ARGS_TO_PASS_OF_PAWNS 8

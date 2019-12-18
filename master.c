@@ -10,17 +10,44 @@ typedef struct {
     int nMovesDo;
 } DataGamer;
 
+static int idMatrix, idSemMatrix, idSemSyncRound, idMsgGamer, idSemGamer;
+static void endHandle(int sig) {
+    removeSem(idSemSyncRound);
+    removeSem(idSemMatrix);
+    removeSem(idSemGamer);
+    removeQueue(idMsgGamer);
+    removeSHM(idMatrix);
+    kill(0, SIGINT);/*Uccido tutti gli altri*/
+    printf("\nAttuata procedura di terminazione debug\n");
+    exit(0);
+}
+
 int main() {
     srand(time(NULL));
 
     pid_t pidChild;
-    int i, numFlags, posFlag, idMatrix, idMsgGamer, idSemGamer, idSemMatrix, idSemSyncRound, statusFork, SO_NUM_G, SO_NUM_P, SO_BASE, SO_ALTEZZA, SO_FLAG_MIN, SO_FLAG_MAX, SO_N_MOVES;
+    int i, numFlags, posFlag, statusFork, SO_NUM_G, SO_NUM_P, SO_BASE, SO_ALTEZZA, SO_FLAG_MIN, SO_FLAG_MAX, SO_N_MOVES, SO_MAX_TIME;
     char *argsToGamer[ARGS_TO_PASS_OF_GAMER];
     char bufferIdMsg[MAX_BUFF_SIZE], bufferIdSemGamer[MAX_BUFF_SIZE], bufferIdSemMatrix[MAX_BUFF_SIZE], bufferIdMatrix[MAX_BUFF_SIZE], bufferIdSemSyncRound[MAX_BUFF_SIZE];
     int *matrix;
     DataGamer *dataGamer; /*Array per ogni Gamer che tiene conto dei dati statistici*/
     SyncGamer syncGamer; /*Invio al Gamer*/
     ResultRound resultRound;
+
+    sigset_t maskSignal;
+    struct sigaction signalAct;
+
+    /*Imposto i segnali: blocco nella maschera SIGALRM*/
+    sigemptyset(&maskSignal);
+    sigaddset(&maskSignal, SIGALRM);
+    if(sigprocmask(SIG_BLOCK, &maskSignal, NULL) < 0) {
+        ERROR;
+        return 0;
+    }
+    memset(&signalAct, 0, sizeof(signalAct));
+    signalAct.sa_handler = endHandle;
+    signalAct.sa_flags = 0;
+    if(sigaction(SIGINT, &signalAct, 0) < 0) { ERROR; return 0; }
 
     /*Leggo dal file di config*/
     SO_NUM_G = readConfig("SO_NUM_G", HARD_MODE, CONF_FILE_PATH);
@@ -37,6 +64,8 @@ int main() {
     if(SO_FLAG_MAX < 0){ ERROR; return 0; }
     SO_N_MOVES = readConfig("SO_N_MOVES", HARD_MODE, CONF_FILE_PATH);
     if(SO_N_MOVES < 0){ ERROR; return 0; }
+    SO_MAX_TIME = readConfig("SO_MAX_TIME", HARD_MODE, CONF_FILE_PATH);
+    if(SO_MAX_TIME < 0){ ERROR; return 0; }
 
     /*Ottengo il puntatore alla mem condivisa di dimensione SO_ALTEZZA * SO_BASE*/
     idMatrix = createSHM(IPC_PRIVATE, (SO_ALTEZZA * SO_BASE) * sizeof(int));
@@ -132,7 +161,7 @@ int main() {
 
     /*2) Posiziono le bandierine*/
     numFlags = generateRandom(SO_FLAG_MIN, SO_FLAG_MAX);
-    printf("Ho posizionato %d flags tra %d e %d\n", numFlags, SO_FLAG_MIN, SO_FLAG_MAX);
+    printf("Ho posizionato %d flags tra %d e %d (il mio PID e' %d)\n", numFlags, SO_FLAG_MIN, SO_FLAG_MAX, getpid());
 
     for(i = 0; i < numFlags; i++) {
         posFlag = flagPositionStrategy(POS_STRATEGY_RANDOM, idSemMatrix, SO_BASE, SO_ALTEZZA);
@@ -156,29 +185,51 @@ int main() {
     /*4) Attendo che i Gamer forniscano la strategia ai Pawns*/
     if(!waitSem(idSemSyncRound, 2)) {ERROR; return 0;}
 
-    /*5) Avvio il round*/
-    if(!modifySem(idSemSyncRound, 3, -1)) { ERROR; return 0; }
+    /*5) Avvio il round: avvio il Timer*/
+    switch(fork()) {
+        case -1:
+            printf("Impossibile avviare il Timer\n");
+            break;
+        case 0:
+            /*Timer: aspetto SO_MAX_TIME e poi lancio il segale*/
+            if(!waitSem(idSemSyncRound, 3)) {ERROR; return 0;}
+            printf("Avvio Timer\n");
+            //sleep(SO_MAX_TIME);
+            if(!waitSemWithoutWait(idSemSyncRound, 4)) {
+                printf("TIMEOUT\n");
+                printf("Lancio il segnale a %d", getppid() * -1);
+                if(kill(0, SIGALRM) < 0) {
+                    printf(" - Errore TIMER: "); ERROR;
+                }
+            }
+            exit(0);
+            break;
+        default:
+            /*Master: avvio il round*/
+            if(!modifySem(idSemSyncRound, 3, -1)) { ERROR; return 0; }
 
-    /*Attendo di ricevere SO_NUM_G messaggi di resoconto del round*/
-    printf("\n");
-    for(i = 0; i < SO_NUM_G; i++) {
-        if(!receiveMessageResultRound(idMsgGamer, 1, &resultRound)) { ERROR; return 0; }
-        printf("--Giocatore %d [points: %d, nMovesLeft: %d, nMovesDo: %d]\n", (i + 1), resultRound.points, resultRound.nMovesLeft, resultRound.nMovesDo);
+            /*Attendo di ricevere SO_NUM_G messaggi di resoconto del round*/
+            printf("\n");
+            for(i = 0; i < SO_NUM_G; i++) {
+                if(!receiveMessageResultRound(idMsgGamer, 1, &resultRound)) { ERROR; return 0; }
+                printf("--Giocatore %d [points: %d, nMovesLeft: %d, nMovesDo: %d]\n", (i + 1), resultRound.points, resultRound.nMovesLeft, resultRound.nMovesDo);
+            }
+
+            while((pidChild = wait(NULL)) != -1) {
+            }
+
+            if(waitSemWithoutWait(idSemSyncRound, 4)) {
+                printf("\nTutte le %d bandierine sono state prese!\n", numFlags - getValueOfSem(idSemSyncRound, 4));
+            }
+            printMatrix(matrix, SO_BASE, SO_ALTEZZA);
+
+            free(dataGamer);
+            removeSem(idSemSyncRound);
+            removeSem(idSemMatrix);
+            removeSem(idSemGamer);
+            removeQueue(idMsgGamer);
+            removeSHM(idMatrix);
+            break;
     }
-
-    while((pidChild = wait(NULL)) != -1) {
-    }
-
-    if(waitSemWithoutWait(idSemSyncRound, 4)) {
-        printf("\nTutte le %d bandierine sono state prese!\n", numFlags - getValueOfSem(idSemSyncRound, 4));
-    }
-    printMatrix(matrix, SO_BASE, SO_ALTEZZA);
-
-    free(dataGamer);
-    removeSem(idSemSyncRound);
-    removeSem(idSemMatrix);
-    removeSem(idSemGamer);
-    removeQueue(idMsgGamer);
-    removeSHM(idMatrix);
     return 0;
 }

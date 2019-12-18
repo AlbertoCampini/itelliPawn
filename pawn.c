@@ -4,16 +4,45 @@
 
 #define CONF_FILE_PATH "./config"
 
+static int i, points, nMoves, idMsgPawns;
+
+static void timeoutHandle (int sig) {
+    printf("c");
+    ResultRound resultRound;
+    resultRound.points = points;
+    resultRound.nMovesLeft = nMoves - i;
+    resultRound.nMovesDo = i;
+    if(!sendMessageResultRound(idMsgPawns, 1, resultRound)) {
+        ERROR;
+    }
+    exit(0);
+}
+
 int main(int argc, char *argv[]) {
-    int i, points, SO_BASE, SO_ALTEZZA, SO_MIN_HOLD_NSEC, gamerName, nMoves, posInMatrix, idSemMatrix, idMatrix, idMsgPawns, idSemSyncRound;
+    int SO_BASE, SO_ALTEZZA, SO_MIN_HOLD_NSEC, gamerName, posInMatrix, idSemMatrix, idMatrix, idSemSyncRound;
     int *matrix;
     SyncPawn syncGamer; /*Ricevo dal Gamer*/
     ResultRound resultRound;
     struct timespec tim;
 
+    sigset_t maskSignal;
+    struct sigaction signalAct;
 
     if(argc != (ARGS_TO_PASS_OF_PAWNS - 1)) {
         printf("Parametri passati insufficienti");
+        return 0;
+    }
+
+    /*Abilito il segnale SIGALRM*/
+    if(sigprocmask(SIG_UNBLOCK, &maskSignal, NULL) < 0) {
+        ERROR;
+        return 0;
+    }
+    //memset(&signalAct, 0, sizeof(signalAct));
+    signalAct.sa_handler = timeoutHandle;
+    signalAct.sa_flags = 0;
+    if(sigaction(SIGALRM, &signalAct, 0) < 0) {
+        ERROR;
         return 0;
     }
 
@@ -78,7 +107,7 @@ int main(int argc, char *argv[]) {
     resultRound.nMovesLeft = nMoves - i;
     resultRound.nMovesDo = i;
     if(!sendMessageResultRound(idMsgPawns, 1, resultRound)) {
-            ERROR;
+        ERROR;
     }
 
     return 0;
