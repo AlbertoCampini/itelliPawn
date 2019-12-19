@@ -4,6 +4,10 @@
 
 #define CONF_FILE_PATH "./config"
 
+static void timeoutHandle (int sig) {
+    printf("Gamer signal %d\n", getpid());
+}
+
 int main(int argc, char *argv[]) {
     srand(time(NULL));
 
@@ -16,10 +20,26 @@ int main(int argc, char *argv[]) {
     SyncPawn syncPawn;      /*Invio al Pawn*/
     ResultRound resultRound, resultRoundGamer;
 
+    sigset_t maskSignal;
+    struct sigaction signalAct;
+
     if(argc != (ARGS_TO_PASS_OF_GAMER - 1)) {
         printf("Parametri passati insufficienti");
         return 0;
     }
+
+    /*Imposto i segnali: blocco nella maschera SIGALRM*/
+    /*if(sigprocmask(SIG_BLOCK, &maskSignal, NULL) < 0) {
+        ERROR;
+        return 0;
+    }
+    signalAct.sa_handler = timeoutHandle;
+    signalAct.sa_flags = 0;
+    signalAct.sa_mask = maskSignal;
+    if(sigaction(SIGUSR1, &signalAct, 0) < 0) {
+        ERROR;
+        return 0;
+    }*/
 
     /*Devo ricevere le configurazioni SyncGamer dal Master*/
     sscanf(argv[1], "%d", &idMsgGamer);
@@ -67,7 +87,7 @@ int main(int argc, char *argv[]) {
         /*2) Generazione strategia e posizionamento pedina*/
         posInMatrix = positionStrategy(POS_STRATEGY_RANDOM, idSemMatrix, SO_BASE, SO_ALTEZZA);
         *(matrix + posInMatrix) = syncMaster.name;
-        /*Fork dei Pawns passando con execve le coordinate su Matrix*/
+        /*Fork dei Pawns passando con execve le coordinate su Matrix e semafori*/
         statusFork = fork();
         if(statusFork == 0) {
             sprintf(bufferIdSemMatrix, "%d", idSemMatrix);
@@ -93,6 +113,7 @@ int main(int argc, char *argv[]) {
         } else {
             /*Mi salvo il PID in un array*/
             *(pidChild + i) = statusFork;
+            setpgid(statusFork, getppid());
         }
 
         /*3) Controllo sul giocatore successivo*/
@@ -130,10 +151,12 @@ int main(int argc, char *argv[]) {
     resultRoundGamer.nMovesLeft = SO_N_MOVES * SO_NUM_P;
     resultRoundGamer.nMovesDo = 0;
     for(i = 0; i < SO_NUM_P; i++) {
-        if(!receiveMessageResultRound(idMsgPawns, 1, &resultRound)) { ERROR; return 0; }
-        resultRoundGamer.points += resultRound.points;
-        resultRoundGamer.nMovesLeft -= resultRound.nMovesDo;
-        resultRoundGamer.nMovesDo += resultRound.nMovesDo;
+        if(!receiveMessageResultRound(idMsgPawns, 1, &resultRound)) { printf("gamer\n");}
+        else {
+            resultRoundGamer.points += resultRound.points;
+            resultRoundGamer.nMovesLeft -= resultRound.nMovesDo;
+            resultRoundGamer.nMovesDo += resultRound.nMovesDo;
+        }
     }
     /*Mando il resoconto del round al Master*/
     if(!sendMessageResultRound(idMsgGamer, 1, resultRoundGamer)) {

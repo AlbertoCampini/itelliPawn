@@ -1,5 +1,9 @@
 #include "core.h"
 
+int isTimeout() {
+    return timeout;
+}
+
 int generateRandom(int to, int from) {
     return rand() % from + to;
 }
@@ -29,7 +33,7 @@ const int readConfig(char *config, int mode, const char *fPath) {
     return -1;
 }
 void printLastError() {
-    printf("[%s, %d]: %s\n", __FILE__, __LINE__, strerror(errno));
+    printf("%s\n", strerror(errno));
 }
 
 /*Define per output in core.h*/

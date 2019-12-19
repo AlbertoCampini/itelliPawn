@@ -11,15 +11,14 @@ typedef struct {
 } DataGamer;
 
 static int idMatrix, idSemMatrix, idSemSyncRound, idMsgGamer, idSemGamer;
-static void endHandle(int sig) {
-    removeSem(idSemSyncRound);
+void endHandle(int signal) {
+    /*removeSem(idSemSyncRound);
     removeSem(idSemMatrix);
     removeSem(idSemGamer);
     removeQueue(idMsgGamer);
     removeSHM(idMatrix);
-    kill(0, SIGINT);/*Uccido tutti gli altri*/
+    kill(-getpid(), SIGINT);*/
     printf("\nAttuata procedura di terminazione debug\n");
-    exit(0);
 }
 
 int main() {
@@ -39,15 +38,16 @@ int main() {
 
     /*Imposto i segnali: blocco nella maschera SIGALRM*/
     sigemptyset(&maskSignal);
-    sigaddset(&maskSignal, SIGALRM);
+    sigaddset(&maskSignal, SIGUSR1);
     if(sigprocmask(SIG_BLOCK, &maskSignal, NULL) < 0) {
         ERROR;
         return 0;
     }
-    memset(&signalAct, 0, sizeof(signalAct));
+    /*memset(&signalAct, 0, sizeof(signalAct));
     signalAct.sa_handler = endHandle;
     signalAct.sa_flags = 0;
-    if(sigaction(SIGINT, &signalAct, 0) < 0) { ERROR; return 0; }
+    signalAct.sa_mask = maskSignal;
+    if(sigaction(SIGUSR1, &signalAct, 0) < 0) { ERROR; return 0; }*/
 
     /*Leggo dal file di config*/
     SO_NUM_G = readConfig("SO_NUM_G", HARD_MODE, CONF_FILE_PATH);
@@ -117,6 +117,7 @@ int main() {
     if(!modifySem(idSemSyncRound, 2, (SO_NUM_G * SO_NUM_P)-SO_NUM_G)) { ERROR; return 0; }/*SEM3: Gamer fornisce strategie ai Pawns*/
     if(!modifySem(idSemSyncRound, 3, -(SO_NUM_G - 1))) { ERROR; return 0; }/*SEM4: Avvio round*/
 
+
     /*INVOCO I GIOCATORI*/
     dataGamer = (DataGamer *)malloc(sizeof(DataGamer) * SO_NUM_G);
     for(i = 0; i < SO_NUM_G; i++) {
@@ -141,6 +142,8 @@ int main() {
             printLastError();
             break;
         } else {
+            setpgid(statusFork, getpid());
+
             syncGamer.order = i;
             syncGamer.strategy = 0;
             syncGamer.name = i + 1;
@@ -186,19 +189,20 @@ int main() {
     if(!waitSem(idSemSyncRound, 2)) {ERROR; return 0;}
 
     /*5) Avvio il round: avvio il Timer*/
-    switch(fork()) {
+    statusFork = fork();
+    switch(statusFork) {
         case -1:
             printf("Impossibile avviare il Timer\n");
             break;
         case 0:
             /*Timer: aspetto SO_MAX_TIME e poi lancio il segale*/
             if(!waitSem(idSemSyncRound, 3)) {ERROR; return 0;}
+
             printf("Avvio Timer\n");
             //sleep(SO_MAX_TIME);
             if(!waitSemWithoutWait(idSemSyncRound, 4)) {
                 printf("TIMEOUT\n");
-                printf("Lancio il segnale a %d", getppid() * -1);
-                if(kill(0, SIGALRM) < 0) {
+                if(kill(0, SIGUSR1) < 0) {
                     printf(" - Errore TIMER: "); ERROR;
                 }
             }
@@ -211,8 +215,10 @@ int main() {
             /*Attendo di ricevere SO_NUM_G messaggi di resoconto del round*/
             printf("\n");
             for(i = 0; i < SO_NUM_G; i++) {
-                if(!receiveMessageResultRound(idMsgGamer, 1, &resultRound)) { ERROR; return 0; }
-                printf("--Giocatore %d [points: %d, nMovesLeft: %d, nMovesDo: %d]\n", (i + 1), resultRound.points, resultRound.nMovesLeft, resultRound.nMovesDo);
+                if(!receiveMessageResultRound(idMsgGamer, 1, &resultRound)) { printf("master\n"); }
+                else {
+                    printf("--Giocatore %d [points: %d, nMovesLeft: %d, nMovesDo: %d]\n", (i + 1), resultRound.points, resultRound.nMovesLeft, resultRound.nMovesDo);
+                }
             }
 
             while((pidChild = wait(NULL)) != -1) {

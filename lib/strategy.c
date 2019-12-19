@@ -1,4 +1,5 @@
 #include "strategy.h"
+#include <stdio.h>
 
 int pointer2LinearArray(const int x, const int y, const int base) {
     return base * (y - 1) + x;

@@ -28,10 +28,13 @@
 #define PRINT_MATRIX printf("%d", matrix[i])
 
 /*CORE FUNCTION*/
+static volatile sig_atomic_t timeout = 1;
+
 extern const int readConfig(char *config, int mode, const char *fPath);
 extern void printLastError();
 extern int generateRandom(int to, int from);
 extern void printMatrix(int *matrix, const int base, const int higth);
+extern int isTimeout();
 
 /*CORE STRUCT*/
 typedef struct {
