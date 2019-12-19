@@ -8,7 +8,6 @@ static int i, points, nMoves, idMsgPawns;
 
 static void timeoutHandle (int sig) {
     timeout = 0;
-    printf("Pawn signal %d\n", getpid());
     ResultRound resultRound;
     resultRound.points = points;
     resultRound.nMovesLeft = nMoves - i;
@@ -34,11 +33,13 @@ int main(int argc, char *argv[]) {
         return 0;
     }
 
-    /*Abilito il segnale SIGALRM*/
+    /*Abilito il segnale SIGUSR1*/
+    sigaddset(&maskSignal, SIGUSR1);
     if(sigprocmask(SIG_UNBLOCK, &maskSignal, NULL) < 0) {
         ERROR;
         return 0;
     }
+    /*imposto l'handler che verra eseguito quando chiamo SIGUSR1*/
     signalAct.sa_handler = timeoutHandle;
     signalAct.sa_flags = 0;
     signalAct.sa_mask = maskSignal;
@@ -47,7 +48,7 @@ int main(int argc, char *argv[]) {
         return 0;
     }
 
-    printf("Pawn ok %d\n", getpid());
+    //signal(SIGUSR1, timeoutHandle);
 
     SO_BASE = readConfig("SO_BASE", HARD_MODE, CONF_FILE_PATH);
     if(SO_BASE < 0){ ERROR; return 0; }
@@ -84,28 +85,26 @@ int main(int argc, char *argv[]) {
     if(!waitSem(idSemSyncRound, 3)) {ERROR; return 0;}
 
     i = 0, points = 0;
-    /*while(!waitSemWithoutWait(idSemSyncRound, 4) && i < nMoves) {*/
+    while(!waitSemWithoutWait(idSemSyncRound, 4) && i < nMoves) {
         /*Pulisco la posizione precedente*/
-        //*(matrix + posInMatrix) = 0;
+        *(matrix + posInMatrix) = 0;
 
         /*Trovo la nuova posizione*/
-        //posInMatrix = movesStrategy(syncGamer.strategy, idSemMatrix, idSemSyncRound, posInMatrix, SO_BASE, SO_ALTEZZA);
+        posInMatrix = movesStrategy(syncGamer.strategy, idSemMatrix, idSemSyncRound, posInMatrix, SO_BASE, SO_ALTEZZA);
 
-        /*if(posInMatrix >= 0) {
-            if(*(matrix + posInMatrix) < 0) {*/
+        if(posInMatrix >= 0) {
+            if(*(matrix + posInMatrix) < 0) {
                 /*Ho preso una Flags*/
-                /*points += (*(matrix + posInMatrix) * -1);
-                if(!modifySem(idSemSyncRound, 4, -1)) { ERROR; }*/
+                points += (*(matrix + posInMatrix) * -1);
+                if(!modifySem(idSemSyncRound, 4, -1)) { ERROR; }
                 /*printf("Ho preso la bandierina %d (%d, %d, %d)\n", (*(matrix + posInMatrix) * -1), gamerName, nMoves - i, getValueOfSem(idSemSyncRound, 4));*/
-            /*}
+            }
 
-            *(matrix + posInMatrix) = gamerName;*/
-            //nanosleep(&tim, NULL);
-            /*i++;
+            *(matrix + posInMatrix) = gamerName;
+            nanosleep(&tim, NULL);
+            i++;
         }
-    }*/
-    sleep(3);
-    printf("Mi sveglio\n");
+    }
 
     /*Invio il resoconto al mio Gamer*/
     resultRound.points = points;

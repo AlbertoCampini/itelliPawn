@@ -12,13 +12,14 @@ typedef struct {
 
 static int idMatrix, idSemMatrix, idSemSyncRound, idMsgGamer, idSemGamer;
 void endHandle(int signal) {
-    /*removeSem(idSemSyncRound);
+    removeSem(idSemSyncRound);
     removeSem(idSemMatrix);
     removeSem(idSemGamer);
     removeQueue(idMsgGamer);
     removeSHM(idMatrix);
-    kill(-getpid(), SIGINT);*/
+    kill(-getpid(), SIGINT);
     printf("\nAttuata procedura di terminazione debug\n");
+    exit(0);
 }
 
 int main() {
@@ -36,18 +37,26 @@ int main() {
     sigset_t maskSignal;
     struct sigaction signalAct;
 
-    /*Imposto i segnali: blocco nella maschera SIGALRM*/
-    sigemptyset(&maskSignal);
-    sigaddset(&maskSignal, SIGUSR1);
-    if(sigprocmask(SIG_BLOCK, &maskSignal, NULL) < 0) {
-        ERROR;
-        return 0;
-    }
-    /*memset(&signalAct, 0, sizeof(signalAct));
-    signalAct.sa_handler = endHandle;
+    /*signalAct.sa_handler = endHandle;
     signalAct.sa_flags = 0;
     signalAct.sa_mask = maskSignal;
-    if(sigaction(SIGUSR1, &signalAct, 0) < 0) { ERROR; return 0; }*/
+    if(sigaction(SIGUSR1, &signalAct, 0) < 0) {
+        ERROR;
+        return 0;
+    }*/
+
+    /*Imposto i segnali: blocco nella maschera SIGUSR1 verranno ereditati da gamer e pawn*/
+     sigemptyset(&maskSignal);
+     sigaddset(&maskSignal, SIGUSR1);
+     if(sigprocmask(SIG_BLOCK, &maskSignal, NULL) < 0) {
+         ERROR;
+         return 0;
+     }
+     /*memset(&signalAct, 0, sizeof(signalAct));
+     signalAct.sa_handler = endHandle;
+     signalAct.sa_flags = 0;
+     signalAct.sa_mask = maskSignal;
+     if(sigaction(SIGINT, &signalAct, 0) < 0) { ERROR; return 0; }*/
 
     /*Leggo dal file di config*/
     SO_NUM_G = readConfig("SO_NUM_G", HARD_MODE, CONF_FILE_PATH);
@@ -199,9 +208,10 @@ int main() {
             if(!waitSem(idSemSyncRound, 3)) {ERROR; return 0;}
 
             printf("Avvio Timer\n");
-            //sleep(SO_MAX_TIME);
+            sleep(SO_MAX_TIME);
             if(!waitSemWithoutWait(idSemSyncRound, 4)) {
                 printf("TIMEOUT\n");
+                printf("sto per uccidere tutti");
                 if(kill(0, SIGUSR1) < 0) {
                     printf(" - Errore TIMER: "); ERROR;
                 }

@@ -4,10 +4,6 @@
 
 #define CONF_FILE_PATH "./config"
 
-static void timeoutHandle (int sig) {
-    printf("Gamer signal %d\n", getpid());
-}
-
 int main(int argc, char *argv[]) {
     srand(time(NULL));
 
