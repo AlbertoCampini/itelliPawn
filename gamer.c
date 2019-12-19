@@ -147,7 +147,7 @@ int main(int argc, char *argv[]) {
     resultRoundGamer.nMovesLeft = SO_N_MOVES * SO_NUM_P;
     resultRoundGamer.nMovesDo = 0;
     for(i = 0; i < SO_NUM_P; i++) {
-        if(!receiveMessageResultRound(idMsgPawns, 1, &resultRound)) { printf("gamer\n");}
+        if(!receiveMessageResultRound(idMsgPawns, 1, &resultRound)) { printf("ho spaccato la coda di messaggi\n");}
         else {
             resultRoundGamer.points += resultRound.points;
             resultRoundGamer.nMovesLeft -= resultRound.nMovesDo;
