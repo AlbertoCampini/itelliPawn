@@ -1,9 +1,5 @@
 #include "core.h"
 
-int isTimeout() {
-    return timeout;
-}
-
 int generateRandom(int to, int from) {
     return rand() % from + to;
 }

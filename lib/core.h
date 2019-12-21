@@ -28,18 +28,15 @@
 #define PRINT_MATRIX printf("%d", matrix[i])
 
 /*CORE FUNCTION*/
-static volatile sig_atomic_t timeout = 1;
-
 extern const int readConfig(char *config, int mode, const char *fPath);
 extern void printLastError();
 extern int generateRandom(int to, int from);
 extern void printMatrix(int *matrix, const int base, const int higth);
-extern int isTimeout();
 
 /*CORE STRUCT*/
 typedef struct {
     long mtype;
-    int order;
+    int order; /*Serve per dare un ordine di posizionamento dei Gamer*/
     int name;
     int strategy;
     int points;
@@ -47,12 +44,14 @@ typedef struct {
 
 typedef struct {
     long mtype;
+    int order; /*Serve per dare un ordine di indicizzazione*/
     int strategy;
     int nMoves;
 } SyncPawn;
 
 typedef struct {
     long mtype;
+    int order; /*Serve per dare un ordine di indicizzazione per sapere a quale Pawn fare riferimento*/
     int points;
     int nMovesLeft;
     int nMovesDo;

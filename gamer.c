@@ -15,6 +15,7 @@ int main(int argc, char *argv[]) {
     SyncGamer syncMaster;   /*Ricevo dal Master*/
     SyncPawn syncPawn;      /*Invio al Pawn*/
     ResultRound resultRound, resultRoundGamer;
+    ResultRound *dataPawn; /*Array per ogni Pawn che tiene conto dei dati statistici*/
 
     sigset_t maskSignal;
     struct sigaction signalAct;
@@ -37,10 +38,6 @@ int main(int argc, char *argv[]) {
         return 0;
     }*/
 
-    /*Devo ricevere le configurazioni SyncGamer dal Master*/
-    sscanf(argv[1], "%d", &idMsgGamer);
-    if(!receiveMessageToMaster(idMsgGamer, getpid(), &syncMaster)) { ERROR; return 0; }
-
     /*Leggo dal file di config*/
     SO_NUM_G = readConfig("SO_NUM_G", HARD_MODE, CONF_FILE_PATH);
     if(SO_NUM_G < 0) { ERROR; return 0; }
@@ -54,6 +51,7 @@ int main(int argc, char *argv[]) {
     if(SO_N_MOVES < 0){ ERROR; return 0; }
 
     /*Acquisisco in input gli argomenti passati da Master*/
+    sscanf(argv[1], "%d", &idMsgGamer);
     sscanf(argv[2], "%d", &idSemMaster);
     sscanf(argv[3], "%d", &idSemMatrix);
     sscanf(argv[4], "%d", &idMatrix);
@@ -75,6 +73,11 @@ int main(int argc, char *argv[]) {
 
     /*Allocazione dinamica di un array che contiene i PID dei Pawns*/
     pidChild = (int *)malloc(sizeof(int) * SO_NUM_P);
+    /*Allocazione dinamica di un array che contiene i dati di ogni round dei Pawns*/
+    dataPawn = (ResultRound *)malloc(sizeof(ResultRound) * SO_NUM_P);
+
+    /*Devo ricevere le configurazioni SyncGamer dal Master*/
+    if(!receiveMessageToMaster(idMsgGamer, getpid(), &syncMaster)) { ERROR; return 0; }
 
     for(i = 0; i < SO_NUM_P; i++) {
         /*1) Attesa sul mio semaforo*/
@@ -109,6 +112,7 @@ int main(int argc, char *argv[]) {
         } else {
             /*Mi salvo il PID in un array*/
             *(pidChild + i) = statusFork;
+            dataPawn[i].nMovesLeft = SO_N_MOVES * SO_NUM_P;
             setpgid(statusFork, getppid());
         }
 
@@ -125,44 +129,53 @@ int main(int argc, char *argv[]) {
         if(!modifySem(idSemMaster, syncMaster.order, 1)) {ERROR;}
     }
 
-    /*SEM1: Il Gamer ha finito di posizionare tutte le sue pedine e decrementa di 1 il semaforo del Master*/
-    if(!modifySem(idSemSyncRound, 0, -1)) {ERROR; return 0;}
-
-    /*SEM2: Attendo che il Master posizioni le Flags*/
-    if(!waitSem(idSemSyncRound, 1)) {ERROR;}
-
-    /*Mando il mex a tutti i Pawns con la strategia da utilizzare (SyncPawns)*/
-    for(i = 0; i < SO_NUM_P; i++) {
-        syncPawn.strategy = MOVES_STRATEGY_RANDOM;
-        syncPawn.nMoves = SO_N_MOVES;
-        if(!sendMessageToPawns(idMsgPawns, *(pidChild + i), syncPawn)) {
-            printf("Errore send messaggio: ");
-            ERROR;
-        }
-    }
-    free(pidChild);
-
-    /*Attendo di ricevere SO_NUM_P messaggi di resoconto del round*/
     resultRoundGamer.points = 0;
     resultRoundGamer.nMovesLeft = SO_N_MOVES * SO_NUM_P;
     resultRoundGamer.nMovesDo = 0;
-    for(i = 0; i < SO_NUM_P; i++) {
-        if(!receiveMessageResultRound(idMsgPawns, 1, &resultRound)) { printf("ho spaccato la coda di messaggi\n");}
-        else {
-            resultRoundGamer.points += resultRound.points;
-            resultRoundGamer.nMovesLeft -= resultRound.nMovesDo;
-            resultRoundGamer.nMovesDo += resultRound.nMovesDo;
+    resultRoundGamer.order = syncMaster.order;
+    do {
+        /*SEM1: Il Gamer ha finito di posizionare tutte le sue pedine e decrementa di 1 il semaforo del Master*/
+        if(!modifySem(idSemSyncRound, 0, -1)) {ERROR; return 0;}
+
+        /*SEM2: Attendo che il Master posizioni le Flags*/
+        if(!waitSem(idSemSyncRound, 1)) {ERROR;}
+
+        /*Mando il mex a tutti i Pawns con la strategia da utilizzare (SyncPawns)*/
+        for(i = 0; i < SO_NUM_P; i++) {
+            syncPawn.strategy = MOVES_STRATEGY_RANDOM;
+            syncPawn.nMoves = dataPawn[i].nMovesLeft;
+            syncPawn.order = i;
+            if(!sendMessageToPawns(idMsgPawns, *(pidChild + i), syncPawn)) {
+                printf("Errore send messaggio: ");
+                ERROR;
+            }
         }
-    }
-    /*Mando il resoconto del round al Master*/
-    if(!sendMessageResultRound(idMsgGamer, 1, resultRoundGamer)) {
-        ERROR;
-    }
+
+        /*Attendo di ricevere SO_NUM_P messaggi di resoconto del round*/
+        for(i = 0; i < SO_NUM_P; i++) {
+            if(!receiveMessageResultRound(idMsgPawns, 1, &resultRound)) { printf("ho spaccato la coda di messaggi\n");}
+            else {
+                /*Dati del round appena finito per ogni Pawns*/
+                dataPawn[resultRound.order].nMovesLeft -= resultRound.nMovesDo;
+
+                /*Dati da mandare al Master*/
+                resultRoundGamer.points += resultRound.points;
+                resultRoundGamer.nMovesLeft -= resultRound.nMovesDo;
+                resultRoundGamer.nMovesDo += resultRound.nMovesDo;
+            }
+        }
+        /*Mando il resoconto del round al Master*/
+        if(!sendMessageResultRound(idMsgGamer, 1, resultRoundGamer)) {
+            ERROR;
+        }
+
+    } while(waitSemWithoutWait(idSemSyncRound, 4));
 
     /*Attendo la morte di tutte le mie Pawns*/
     while((pidChildKill = wait(NULL)) != -1) {
     }
 
+    free(pidChild);
     removeQueue(idMsgPawns);
     return 0;
 }

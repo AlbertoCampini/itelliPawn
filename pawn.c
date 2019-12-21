@@ -7,7 +7,6 @@
 static int i, points, nMoves, idMsgPawns;
 
 static void timeoutHandle (int sig) {
-    timeout = 0;
     ResultRound resultRound;
     resultRound.points = points;
     resultRound.nMovesLeft = nMoves - i;
@@ -74,45 +73,48 @@ int main(int argc, char *argv[]) {
         return 0;
     }
 
-    /*Devo ricevere le configurazioni SyncPawn dal Gamer*/
-    if(!receiveMessageToGamer(idMsgPawns, getpid(), &syncGamer)) { ERROR; return 0; }
-    nMoves = syncGamer.nMoves;
+    do {
+         /*Devo ricevere le configurazioni SyncPawn dal Gamer*/
+        if(!receiveMessageToGamer(idMsgPawns, getpid(), &syncGamer)) { ERROR; return 0; }
+        nMoves = syncGamer.nMoves;
 
-    /*Decremento il SEM3 di -1 per dichiarare al Master che ho ricevuto la strategia*/
-    if(!modifySem(idSemSyncRound, 2, -1)) { ERROR; return 0; }
+        /*Decremento il SEM3 di -1 per dichiarare al Master che ho ricevuto la strategia*/
+        if(!modifySem(idSemSyncRound, 2, -1)) { ERROR; return 0; }
 
-    /*Attendo l'inizio round*/
-    if(!waitSem(idSemSyncRound, 3)) {ERROR; return 0;}
+        /*Attendo l'inizio round*/
+        if(!waitSem(idSemSyncRound, 3)) {ERROR; return 0;}
 
-    i = 0, points = 0;
-    while(!waitSemWithoutWait(idSemSyncRound, 4) && i < nMoves) {
-        /*Pulisco la posizione precedente*/
-        *(matrix + posInMatrix) = 0;
+        i = 0, points = 0;
+        while(i < nMoves && !waitSemWithoutWait(idSemSyncRound, 4)) {
+            /*Pulisco la posizione precedente*/
+            *(matrix + posInMatrix) = 0;
 
-        /*Trovo la nuova posizione*/
-        posInMatrix = movesStrategy(syncGamer.strategy, idSemMatrix, idSemSyncRound, posInMatrix, SO_BASE, SO_ALTEZZA);
+            /*Trovo la nuova posizione*/
+            posInMatrix = movesStrategy(syncGamer.strategy, idSemMatrix, idSemSyncRound, posInMatrix, SO_BASE, SO_ALTEZZA);
 
-        if(posInMatrix >= 0) {
-            if(*(matrix + posInMatrix) < 0) {
-                /*Ho preso una Flags*/
-                points += (*(matrix + posInMatrix) * -1);
-                if(!modifySem(idSemSyncRound, 4, -1)) { ERROR; }
-                /*printf("Ho preso la bandierina %d (%d, %d, %d)\n", (*(matrix + posInMatrix) * -1), gamerName, nMoves - i, getValueOfSem(idSemSyncRound, 4));*/
+            if(posInMatrix >= 0) {
+                if(*(matrix + posInMatrix) < 0) {
+                    /*Ho preso una Flags*/
+                    points += (*(matrix + posInMatrix) * -1);
+                    if(!modifySem(idSemSyncRound, 4, -1)) { ERROR; }
+                    /*printf("Ho preso la bandierina %d (%d, %d, %d)\n", (*(matrix + posInMatrix) * -1), gamerName, nMoves - i, getValueOfSem(idSemSyncRound, 4));*/
+                }
+
+                *(matrix + posInMatrix) = gamerName;
+                nanosleep(&tim, NULL);
+                i++;
             }
-
-            *(matrix + posInMatrix) = gamerName;
-            nanosleep(&tim, NULL);
-            i++;
         }
-    }
 
-    /*Invio il resoconto al mio Gamer*/
-    resultRound.points = points;
-    resultRound.nMovesLeft = nMoves - i;
-    resultRound.nMovesDo = i;
-    if(!sendMessageResultRound(idMsgPawns, 1, resultRound)) {
-        ERROR;
-    }
+        /*Invio il resoconto al mio Gamer*/
+        resultRound.order = syncGamer.order;
+        resultRound.points = points;
+        resultRound.nMovesLeft = nMoves - i;
+        resultRound.nMovesDo = i;
+        if(!sendMessageResultRound(idMsgPawns, 1, resultRound)) {
+            ERROR;
+        }
+    } while(1);
 
     return 0;
 }
