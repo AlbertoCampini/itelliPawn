@@ -112,7 +112,7 @@ int main(int argc, char *argv[]) {
         } else {
             /*Mi salvo il PID in un array*/
             *(pidChild + i) = statusFork;
-            dataPawn[i].nMovesLeft = SO_N_MOVES * SO_NUM_P;
+            dataPawn[i].nMovesLeft = SO_N_MOVES;
             setpgid(statusFork, getppid());
         }
 
@@ -129,14 +129,16 @@ int main(int argc, char *argv[]) {
         if(!modifySem(idSemMaster, syncMaster.order, 1)) {ERROR;}
     }
 
+    /*SEM1: Il Gamer ha finito di posizionare tutte le sue pedine e decrementa di 1 il semaforo del Master*/
+    if(!modifySem(idSemSyncRound, 0, -1)) {ERROR; return 0;}
+
     resultRoundGamer.points = 0;
     resultRoundGamer.nMovesLeft = SO_N_MOVES * SO_NUM_P;
     resultRoundGamer.nMovesDo = 0;
+    /*Imposto l'ordine che mi ha assegnato il Master*/
     resultRoundGamer.order = syncMaster.order;
-    do {
-        /*SEM1: Il Gamer ha finito di posizionare tutte le sue pedine e decrementa di 1 il semaforo del Master*/
-        if(!modifySem(idSemSyncRound, 0, -1)) {ERROR; return 0;}
 
+    do {
         /*SEM2: Attendo che il Master posizioni le Flags*/
         if(!waitSem(idSemSyncRound, 1)) {ERROR;}
 
@@ -153,10 +155,11 @@ int main(int argc, char *argv[]) {
 
         /*Attendo di ricevere SO_NUM_P messaggi di resoconto del round*/
         for(i = 0; i < SO_NUM_P; i++) {
-            if(!receiveMessageResultRound(idMsgPawns, 1, &resultRound)) { printf("ho spaccato la coda di messaggi\n");}
+            if(!receiveMessageResultRound(idMsgPawns, 1, &resultRound)) { printf("ho spaccato la coda di messaggi\n"); }
             else {
                 /*Dati del round appena finito per ogni Pawns*/
                 dataPawn[resultRound.order].nMovesLeft -= resultRound.nMovesDo;
+
 
                 /*Dati da mandare al Master*/
                 resultRoundGamer.points += resultRound.points;
@@ -164,12 +167,17 @@ int main(int argc, char *argv[]) {
                 resultRoundGamer.nMovesDo += resultRound.nMovesDo;
             }
         }
+
         /*Mando il resoconto del round al Master*/
         if(!sendMessageResultRound(idMsgGamer, 1, resultRoundGamer)) {
             ERROR;
         }
 
-    } while(waitSemWithoutWait(idSemSyncRound, 4));
+        /*Attendo la fine del round*/
+        printf("Send msg to Master (%d)\n", getValueOfSem(idSemSyncRound, 5));
+        if(!waitSem(idSemSyncRound, 5)) {ERROR; printf("ho spaccato il SEM6\n"); }
+        printf("Fine round| ");
+    } while(waitSemWithoutWait(idSemSyncRound, 4) && resultRoundGamer.nMovesLeft > 0);
 
     /*Attendo la morte di tutte le mie Pawns*/
     while((pidChildKill = wait(NULL)) != -1) {

@@ -4,23 +4,51 @@
 
 #define CONF_FILE_PATH "./config"
 
-static int i, points, nMoves, idMsgPawns;
+static int i, points, nMoves, gamerName, SO_BASE, SO_ALTEZZA, idMsgPawns, idSemMatrix, idSemSyncRound, posInMatrix, alreadySend, alreadyMove1 = 0, alreadyMove2 = 0;
+static int *matrix;
+static SyncPawn syncGamer; /*Ricevo dal Gamer*/
 
 static void timeoutHandle (int sig) {
-    ResultRound resultRound;
-    resultRound.points = points;
-    resultRound.nMovesLeft = nMoves - i;
-    resultRound.nMovesDo = i;
-    if(!sendMessageResultRound(idMsgPawns, 1, resultRound)) {
-        ERROR;
+    /*Ricostruisco la situazione dei movimenti*/
+    /*if(!alreadyMove1) {
+        printf("handle alreadyMove1\n");
+        *(matrix + posInMatrix) = 0;
+        posInMatrix = movesStrategy(syncGamer.strategy, idSemMatrix, idSemSyncRound, posInMatrix, SO_BASE, SO_ALTEZZA);
+        if(posInMatrix >= 0) {
+            if(*(matrix + posInMatrix) < 0) {
+                points += (*(matrix + posInMatrix) * -1);
+                if(!modifySem(idSemSyncRound, 4, -1)) { ERROR; }
+            }
+            *(matrix + posInMatrix) = gamerName;
+        }
+    }
+    if(!alreadyMove2) {
+        printf("handle alreadyMove2\n");
+        if(posInMatrix >= 0) {
+            if(*(matrix + posInMatrix) < 0) {
+                points += (*(matrix + posInMatrix) * -1);
+                if(!modifySem(idSemSyncRound, 4, -1)) { ERROR; }
+            }
+            *(matrix + posInMatrix) = gamerName;
+        }
+    }*/
+
+    /*Se non ho ancora mandato il Msg al Gamer lo faccio da qui*/
+    if(!alreadySend) {
+        ResultRound resultRound;
+        resultRound.points = points;
+        resultRound.nMovesLeft = nMoves - i;
+        resultRound.nMovesDo = i;
+        resultRound.order = syncGamer.order;
+        if(!sendMessageResultRound(idMsgPawns, 1, resultRound)) {
+            ERROR;
+        }
     }
     exit(0);
 }
 
 int main(int argc, char *argv[]) {
-    int SO_BASE, SO_ALTEZZA, SO_MIN_HOLD_NSEC, gamerName, posInMatrix, idSemMatrix, idMatrix, idSemSyncRound;
-    int *matrix;
-    SyncPawn syncGamer; /*Ricevo dal Gamer*/
+    int SO_MIN_HOLD_NSEC, idMatrix;
     ResultRound resultRound;
     struct timespec tim;
 
@@ -77,9 +105,11 @@ int main(int argc, char *argv[]) {
          /*Devo ricevere le configurazioni SyncPawn dal Gamer*/
         if(!receiveMessageToGamer(idMsgPawns, getpid(), &syncGamer)) { ERROR; return 0; }
         nMoves = syncGamer.nMoves;
+        alreadySend = 0;
 
         /*Decremento il SEM3 di -1 per dichiarare al Master che ho ricevuto la strategia*/
         if(!modifySem(idSemSyncRound, 2, -1)) { ERROR; return 0; }
+        printf("Decremento SEM3 (%d)\n", getValueOfSem(idSemSyncRound, 2));
 
         /*Attendo l'inizio round*/
         if(!waitSem(idSemSyncRound, 3)) {ERROR; return 0;}
@@ -87,20 +117,25 @@ int main(int argc, char *argv[]) {
         i = 0, points = 0;
         while(i < nMoves && !waitSemWithoutWait(idSemSyncRound, 4)) {
             /*Pulisco la posizione precedente*/
-            *(matrix + posInMatrix) = 0;
+            alreadyMove1 = 0;
+            //*(matrix + posInMatrix) = 0;
 
             /*Trovo la nuova posizione*/
             posInMatrix = movesStrategy(syncGamer.strategy, idSemMatrix, idSemSyncRound, posInMatrix, SO_BASE, SO_ALTEZZA);
+            alreadyMove1 = 1;
 
+            alreadyMove2 = 0;
             if(posInMatrix >= 0) {
                 if(*(matrix + posInMatrix) < 0) {
                     /*Ho preso una Flags*/
                     points += (*(matrix + posInMatrix) * -1);
                     if(!modifySem(idSemSyncRound, 4, -1)) { ERROR; }
-                    /*printf("Ho preso la bandierina %d (%d, %d, %d)\n", (*(matrix + posInMatrix) * -1), gamerName, nMoves - i, getValueOfSem(idSemSyncRound, 4));*/
+                    //printf("Ho preso la bandierina %d (%d, %d, %d)\n", posInMatrix, gamerName, nMoves - i, getValueOfSem(idSemSyncRound, 4));
                 }
 
                 *(matrix + posInMatrix) = gamerName;
+                alreadyMove2 = 1;
+
                 nanosleep(&tim, NULL);
                 i++;
             }
@@ -114,6 +149,7 @@ int main(int argc, char *argv[]) {
         if(!sendMessageResultRound(idMsgPawns, 1, resultRound)) {
             ERROR;
         }
+        alreadySend = 1;
     } while(1);
 
     return 0;
