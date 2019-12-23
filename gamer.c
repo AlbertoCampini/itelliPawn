@@ -139,6 +139,8 @@ int main(int argc, char *argv[]) {
     resultRoundGamer.order = syncMaster.order;
 
     do {
+        if(!modifySem(idSemSyncRound, 5, -1)) {ERROR; printf("ho spaccato il SEM6\n");}
+
         /*SEM2: Attendo che il Master posizioni le Flags*/
         if(!waitSem(idSemSyncRound, 1)) {ERROR;}
 
@@ -160,7 +162,6 @@ int main(int argc, char *argv[]) {
                 /*Dati del round appena finito per ogni Pawns*/
                 dataPawn[resultRound.order].nMovesLeft -= resultRound.nMovesDo;
 
-
                 /*Dati da mandare al Master*/
                 resultRoundGamer.points += resultRound.points;
                 resultRoundGamer.nMovesLeft -= resultRound.nMovesDo;
@@ -173,11 +174,8 @@ int main(int argc, char *argv[]) {
             ERROR;
         }
 
-        /*Attendo la fine del round*/
-        printf("Send msg to Master (%d)\n", getValueOfSem(idSemSyncRound, 5));
-        if(!waitSem(idSemSyncRound, 5)) {ERROR; printf("ho spaccato il SEM6\n"); }
-        printf("Fine round| ");
-    } while(waitSemWithoutWait(idSemSyncRound, 4) && resultRoundGamer.nMovesLeft > 0);
+        //printf("Fine round (%d, %d)\n", resultRoundGamer.nMovesLeft, waitSemWithoutWait(idSemSyncRound, 4));
+    } while(waitSemWithoutWait(idSemSyncRound, 4));
 
     /*Attendo la morte di tutte le mie Pawns*/
     while((pidChildKill = wait(NULL)) != -1) {
