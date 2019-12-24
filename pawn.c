@@ -54,11 +54,11 @@ int main(int argc, char *argv[]) {
 
     //signal(SIGUSR1, timeoutHandle);
 
-    SO_BASE = readConfig("SO_BASE", HARD_MODE, CONF_FILE_PATH);
+    SO_BASE = readConfig("SO_BASE", CONF_FILE_PATH);
     if(SO_BASE < 0){ ERROR; return 0; }
-    SO_ALTEZZA = readConfig("SO_ALTEZZA", HARD_MODE, CONF_FILE_PATH);
+    SO_ALTEZZA = readConfig("SO_ALTEZZA", CONF_FILE_PATH);
     if(SO_ALTEZZA < 0){ ERROR; return 0; }
-    SO_MIN_HOLD_NSEC = readConfig("SO_MIN_HOLD_NSEC", HARD_MODE, CONF_FILE_PATH);
+    SO_MIN_HOLD_NSEC = readConfig("SO_MIN_HOLD_NSEC", CONF_FILE_PATH);
     if(SO_MIN_HOLD_NSEC < 0){ ERROR; return 0; }
 
     tim.tv_sec = 0;
@@ -92,12 +92,12 @@ int main(int argc, char *argv[]) {
 
         i = 0, points = 0;
         while(i < nMoves && !waitSemWithoutWait(idSemSyncRound, 4)) {
-            if(posInMatrix >= 0) {
-                /*Pulisco la posizione precedente*/
-                *(matrix + posInMatrix) = 0;
+            /*Pulisco la posizione precedente*/
+            *(matrix + posInMatrix) = 0;
 
-                /*Trovo la nuova posizione*/
-                posInMatrix = movesStrategy(syncGamer.strategy, idSemMatrix, idSemSyncRound, posInMatrix, SO_BASE, SO_ALTEZZA);
+            /*Trovo la nuova posizione*/
+            posInMatrix = movesStrategy(syncGamer.strategy, idSemMatrix, idSemSyncRound, posInMatrix, SO_BASE, SO_ALTEZZA);
+            if(posInMatrix >= 0) {
                 if(*(matrix + posInMatrix) < 0) {
                     /*Ho preso una Flags*/
                     points += (*(matrix + posInMatrix) * -1);
@@ -106,7 +106,7 @@ int main(int argc, char *argv[]) {
                 }
 
                 *(matrix + posInMatrix) = gamerName;
-                printf("%d ", gamerName);
+                //printf("%d ", gamerName);
                 nanosleep(&tim, NULL);
                 i++;
             }

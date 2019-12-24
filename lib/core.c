@@ -1,25 +1,30 @@
 #include "core.h"
 
 int generateRandom(int to, int from) {
-    return rand() % from + to;
+    return (rand() % (from - to + 1)) + to;
 }
 /*Legge dal file di configurazioni il valore della char *config con la modalità*/
-const int readConfig(char *config, int mode, const char *fPath) {
+const int readConfig(char *config, const char *fPath) {
     FILE *fConf = fopen(fPath, "r");
+    int actualMode = -1;
     if (fConf == NULL) {
         return -1;
     }
     char line[MAX_LINE_CONF];
     while(fgets(line, sizeof(line), fConf) != NULL) {
         if(strcmp(line, "") != 0 && strcmp(line, "\n") != 0) {
-            int modeRead = atoi(strtok(line, "."));
-            char *configRead = strtok(NULL, ":");
-            int valueRead = atoi(strtok(NULL, ":"));
-            //void *value = &valueRead;
+            if(actualMode == -1) {
+                actualMode = atoi(strtok(line, "#"));
+            } else {
+                int modeRead = atoi(strtok(line, "."));
+                char *configRead = strtok(NULL, ":");
+                int valueRead = atoi(strtok(NULL, ":"));
+                //printf("(%d) %d:%s:%d\n", actualMode, modeRead, configRead, valueRead);
 
-            if(strcmp(config, configRead) == 0) {
-                if(mode == modeRead) {
-                    return valueRead;
+                if(strcmp(config, configRead) == 0) {
+                    if(actualMode == modeRead) {
+                        return valueRead;
+                    }
                 }
             }
         }

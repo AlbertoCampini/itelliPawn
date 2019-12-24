@@ -39,15 +39,15 @@ int main(int argc, char *argv[]) {
     }*/
 
     /*Leggo dal file di config*/
-    SO_NUM_G = readConfig("SO_NUM_G", HARD_MODE, CONF_FILE_PATH);
+    SO_NUM_G = readConfig("SO_NUM_G", CONF_FILE_PATH);
     if(SO_NUM_G < 0) { ERROR; return 0; }
-    SO_NUM_P = readConfig("SO_NUM_P", HARD_MODE, CONF_FILE_PATH);
+    SO_NUM_P = readConfig("SO_NUM_P", CONF_FILE_PATH);
     if(SO_NUM_P < 0) { ERROR; return 0; }
-    SO_BASE = readConfig("SO_BASE", HARD_MODE, CONF_FILE_PATH);
+    SO_BASE = readConfig("SO_BASE", CONF_FILE_PATH);
     if(SO_BASE < 0){ ERROR; return 0; }
-    SO_ALTEZZA = readConfig("SO_ALTEZZA", HARD_MODE, CONF_FILE_PATH);
+    SO_ALTEZZA = readConfig("SO_ALTEZZA", CONF_FILE_PATH);
     if(SO_ALTEZZA < 0){ ERROR; return 0; }
-    SO_N_MOVES = readConfig("SO_N_MOVES", HARD_MODE, CONF_FILE_PATH);
+    SO_N_MOVES = readConfig("SO_N_MOVES", CONF_FILE_PATH);
     if(SO_N_MOVES < 0){ ERROR; return 0; }
 
     /*Acquisisco in input gli argomenti passati da Master*/

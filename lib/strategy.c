@@ -66,7 +66,6 @@ int movesStrategyRandom(int idSemMatrix, int idSemFlags, const int actualPos, co
     while(((newPos = findCorrectPos(move, actualPos, base, higth)) == -1 || !waitSemWithoutWait(idSemMatrix, newPos)) && continua) {
         if(waitSemWithoutWait(idSemFlags, 4)) {
             continua = 0;
-            //printf("Flags prese\n");
         } else {
             move = generateRandom(0, 3);
         }

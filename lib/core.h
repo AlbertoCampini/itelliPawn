@@ -24,14 +24,16 @@
 #define RED "\033[0;31m"
 #define YELLOW "\033[0;33m"
 #define GREEN "\033[0;32m"
+#define MAGENTA "\033[0;35m"
+#define CYAN "\033[0;36m"
 #define RESET_COLOR "\033[0m"
 #define PRINT_MATRIX printf("%d", matrix[i])
 
 /*CORE FUNCTION*/
-extern const int readConfig(char *config, int mode, const char *fPath);
-extern void printLastError();
-extern int generateRandom(int to, int from);
-extern void printMatrix(int *matrix, const int base, const int higth);
+const int readConfig(char *config, const char *fPath);
+void printLastError();
+int generateRandom(int to, int from);
+void printMatrix(int *matrix, const int base, const int higth);
 
 /*CORE STRUCT*/
 typedef struct {
@@ -67,25 +69,25 @@ union semun {
 #endif
 
 /*IPC QUEUE*/
-extern int createMsgQueue(key_t key);
-extern int removeQueue(int id);
-extern int sendMessageToGamer(int idMsg, long msgType, SyncGamer syncGamer);
-extern int receiveMessageToMaster(int idMsg, long msgType, void *msg);
-extern int sendMessageToPawns(int idMsg, long msgType, SyncPawn syncPawn);
-extern int receiveMessageToGamer(int idMsg, long msgType, void *msg);
-extern int sendMessageResultRound(int idMsg, long msgType, ResultRound resultRound);
-extern int receiveMessageResultRound(int idMsg, long msgType, void *msg);
+int createMsgQueue(key_t key);
+int removeQueue(int id);
+int sendMessageToGamer(int idMsg, long msgType, SyncGamer syncGamer);
+int receiveMessageToMaster(int idMsg, long msgType, void *msg);
+int sendMessageToPawns(int idMsg, long msgType, SyncPawn syncPawn);
+int receiveMessageToGamer(int idMsg, long msgType, void *msg);
+int sendMessageResultRound(int idMsg, long msgType, ResultRound resultRound);
+int receiveMessageResultRound(int idMsg, long msgType, void *msg);
 
 /*IPC SEMAPHORE*/
-extern int createAndInitSems(key_t semKey, const int nSems, unsigned short valInit);
-extern int removeSem(int semId);
-extern int modifySem(int semId, int semNum, const int num);
-extern int getValueOfSem(int semId, int semNum);
-extern int waitSem(int semId, int semNum);
-extern int waitSemWithoutWait(int semId, int semNum);
+int createAndInitSems(key_t semKey, const int nSems, unsigned short valInit);
+int removeSem(int semId);
+int modifySem(int semId, int semNum, const int num);
+int getValueOfSem(int semId, int semNum);
+int waitSem(int semId, int semNum);
+int waitSemWithoutWait(int semId, int semNum);
 
 /*IPC SHARED MEMORY*/
-extern int createSHM(key_t key, size_t dim);
-extern int removeSHM(int idSHM);
-extern void *attachSHM(int idSHM);
-extern void initSHM(int *matrix, const int base, const int higth, const int valInit);
+int createSHM(key_t key, size_t dim);
+int removeSHM(int idSHM);
+void *attachSHM(int idSHM);
+void initSHM(int *matrix, const int base, const int higth, const int valInit);
