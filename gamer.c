@@ -84,7 +84,7 @@ int main(int argc, char *argv[]) {
         if(!waitSem(idSemMaster, syncMaster.order)) {ERROR;}
 
         /*2) Generazione strategia e posizionamento pedina*/
-        posInMatrix = positionStrategy(POS_STRATEGY_RANDOM, idSemMatrix, SO_BASE, SO_ALTEZZA);
+        posInMatrix = positionStrategy(matrix, POS_STRATEGY_ODD_OR_EVEN_ROW, syncMaster.order, idSemMatrix, SO_BASE, SO_ALTEZZA);
         *(matrix + posInMatrix) = syncMaster.name;
         /*Fork dei Pawns passando con execve le coordinate su Matrix e semafori*/
         statusFork = fork();
@@ -110,10 +110,11 @@ int main(int argc, char *argv[]) {
             ERROR;
             exit(0);
         } else {
+            setpgid(statusFork, getppid());
             /*Mi salvo il PID in un array*/
             *(pidChild + i) = statusFork;
+
             dataPawn[i].nMovesLeft = SO_N_MOVES;
-            setpgid(statusFork, getppid());
         }
 
         /*3) Controllo sul giocatore successivo*/
@@ -146,7 +147,7 @@ int main(int argc, char *argv[]) {
 
         /*Mando il mex a tutti i Pawns con la strategia da utilizzare (SyncPawns)*/
         for(i = 0; i < SO_NUM_P; i++) {
-            syncPawn.strategy = MOVES_STRATEGY_RANDOM;
+            syncPawn.strategy = MOVES_STRATEGY_DX_OR_SX;
             syncPawn.nMoves = dataPawn[i].nMovesLeft;
             syncPawn.order = i;
             if(!sendMessageToPawns(idMsgPawns, *(pidChild + i), syncPawn)) {

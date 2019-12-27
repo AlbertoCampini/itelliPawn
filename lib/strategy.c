@@ -10,6 +10,9 @@ int flagPositionStrategy(int strategy, int idSemMatrix, const int base, const in
         case POS_STRATEGY_RANDOM:
             return flagPositionStrategyRandom(idSemMatrix, base, higth);
             break;
+        case POS_STRATEGY_ODD_OR_EVEN:
+            return flagPositionStrategyOddOrEven(idSemMatrix, base, higth);
+            break;
         default:
             return -1;
             break;
@@ -22,15 +25,26 @@ int flagPositionStrategyRandom(int idSemMatrix, const int base, const int higth)
     }
     return pos;
 }
+int flagPositionStrategyOddOrEven(int idSemMatrix, const int base, const int higth) {
+    int pos = generateRandom(0, (base * higth));
+    while((!waitSemWithoutWait(idSemMatrix, pos) || ((pos % 2) == 0)) || (waitSemWithoutWait(idSemMatrix, pos - 1) || waitSemWithoutWait(idSemMatrix, pos + 1))) {
+
+        pos = generateRandom(0, (base * higth));
+    }
+    return pos;
+}
 
 
-int positionStrategy(int strategy, int idSemMatrix, const int base, const int higth) {
+int positionStrategy(int *matrix, int strategy, int gamerName, int idSemMatrix, const int base, const int higth) {
     switch(strategy) {
         case POS_STRATEGY_RANDOM:
             return positionStrategyRandom(idSemMatrix, base, higth);
             break;
-        case POS_STRATEGY_OPTIMIZE:
-            return 2;
+        case POS_STRATEGY_ODD_OR_EVEN:
+            return positionStrategyOddOrEven(idSemMatrix, base, higth);
+            break;
+        case POS_STRATEGY_ODD_OR_EVEN_ROW:
+            return positionStrategyOddOrEvenRow(matrix, gamerName, idSemMatrix, base, higth);
             break;
         default:
             return -1;
@@ -48,12 +62,54 @@ int positionStrategyRandom(int idSemMatrix, const int base, const int higth) {
     }
     return pos;
 }
+int positionStrategyOddOrEven(int idSemMatrix, const int base, const int higth) {
+    int pos = generateRandom(0, (base * higth));
+    while(!waitSemWithoutWait(idSemMatrix, pos) || ((pos % 2) == 1)) {
+        pos = generateRandom(0, (base * higth));
+    }
+    /*Blocco il semaforo della cella in cui mi voglio posizionare e ritorno pos*/
+    if(!modifySem(idSemMatrix, pos, 1)) {
+        return -1;
+    }
+    return pos;
+}
+int positionStrategyOddOrEvenRow(int *matrix, int gamerName, int idSemMatrix, const int base, const int higth) {
+    int i, row, pos, okPos = 1;
+
+    do {
+        pos = generateRandom(0, (base * higth));
+        row = pos / base;
+        while(!waitSemWithoutWait(idSemMatrix, pos) || ((row % 2) == gamerName)) {
+            pos = generateRandom(0, (base * higth));
+            row = pos / base;
+        }
+
+        /*TODO: si blocca qui!*/
+        printf("%d\n", okPos);
+        for(i = 0; i < base && okPos; i++) {
+            printf("%d ", matrix[(row * base) + i]);
+            if(matrix[(row * base) + i] == gamerName + 1) {
+                okPos = 0;
+            }
+        }
+    } while(!okPos);
 
 
-int movesStrategy(int strategy, int idSemMatrix, int idSemFlags, const int actualPos, const int base, const int higth) {
+    /*Blocco il semaforo della cella in cui mi voglio posizionare e ritorno pos*/
+    if(!modifySem(idSemMatrix, pos, 1)) {
+        return -1;
+    }
+    return pos;
+}
+
+
+int movesStrategy(int *matrix, int strategy, int idSemMatrix, int idSemFlags, const int actualPos, const int base, const int higth) {
     switch(strategy) {
         case MOVES_STRATEGY_RANDOM:
             return movesStrategyRandom(idSemMatrix, idSemFlags, actualPos, base, higth);
+            break;
+        case MOVES_STRATEGY_DX_OR_SX:
+            return movesStrategyDxOrSx(matrix, idSemMatrix, idSemFlags, actualPos, base, higth);
             break;
         default:
             return -1;
@@ -85,6 +141,36 @@ int movesStrategyRandom(int idSemMatrix, int idSemFlags, const int actualPos, co
         return -1;
     }
     return newPos;
+}
+int movesStrategyDxOrSx(int *matrix, int idSemMatrix, int idSemFlags, const int actualPos, const int base, const int higth) {
+    /*Provo a DX e SX se c'è una bandierina (solo un movimento)*/
+    int newPosDx = findCorrectPos(2, actualPos, base, higth);
+    int newPosSx = findCorrectPos(3, actualPos, base, higth);
+
+    if(newPosDx != -1 && waitSemWithoutWait(idSemMatrix, newPosDx) && *(matrix + newPosDx) < 0) {
+        /*Blocco il semaforo della nuova posizione*/
+        if(!modifySem(idSemMatrix, newPosDx, 1)) {
+            return -1;
+        }
+        /*Ri-sblocco il semaforo della nuova posizione*/
+        if(!modifySem(idSemMatrix, newPosDx, -1)) {
+            return -1;
+        }
+        return newPosDx;
+    }
+    if(newPosSx != -1 && waitSemWithoutWait(idSemMatrix, newPosSx) && *(matrix + newPosSx) < 0) {
+        /*Blocco il semaforo della nuova posizione*/
+        if(!modifySem(idSemMatrix, newPosSx, 1)) {
+            return -1;
+        }
+        /*Ri-sblocco il semaforo della nuova posizione*/
+        if(!modifySem(idSemMatrix, newPosSx, -1)) {
+            return -1;
+        }
+        return newPosSx;
+    }
+
+    return -1;
 }
 int findCorrectPos(int move, const int actualPos, const int base, const int higth) {
     switch(move) {

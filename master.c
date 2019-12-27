@@ -27,6 +27,8 @@ int main() {
     int *matrix;
     time_t startTime, endTime;
     double *totalTime;
+    float timeLeft;
+
     ResultRound *dataGamer; /*Array per ogni Gamer che tiene conto dei dati statistici*/
     SyncGamer syncGamer; /*Invio al Gamer*/
     ResultRound resultRound;
@@ -203,17 +205,19 @@ int main() {
 
         for(i = 0; i < numFlags; i++) {
             posFlag = flagPositionStrategy(POS_STRATEGY_RANDOM, idSemMatrix, SO_BASE, SO_ALTEZZA);
+            /*Serve per controllare se non esiste un altra Flag (valore negativo)*/
             while(*(matrix + posFlag) < 0) {
                 posFlag = flagPositionStrategy(POS_STRATEGY_RANDOM, idSemMatrix, SO_BASE, SO_ALTEZZA);
             }
             *(matrix + posFlag) = -1;//((i + 1) * -1);
         }
+
         /*SEM5: Semaforo per sapere quando sono state prese tutte le flags (è inizializzato al numero di bandierine)*/
         if(!modifySem(idSemSyncRound, 4, (-(SO_NUM_G * firstRound) + numFlags))) { ERROR; return 0; }
 
         /*Stampo la matrix e le metriche del punto 1.6*/
         for(i = 0; i < SO_NUM_G; i++) {
-            printf("--Giocatore %d: punteggio %d, mosse residue %d\n", (dataGamer + i)->order + 1, (dataGamer + i)->points, (dataGamer + i)->nMovesLeft);
+            printf("--Giocatore %d: punteggio %d, mosse fatte %d, mosse residue %d\n", (dataGamer + i)->order + 1, (dataGamer + i)->points, (dataGamer + i)->nMovesDo, (dataGamer + i)->nMovesLeft);
         }
         printf(CYAN);
         printf("\n--Situazione INIZIALE della scacchiera--");
@@ -225,7 +229,6 @@ int main() {
             ERROR;
             return 0;
         }
-        //printf("Mi preparo ad iniziare il %d round\n", numRound);
 
         /*4) Attendo che i Gamer forniscano la strategia ai Pawns*/
         if (!waitSem(idSemSyncRound, 2)) {
@@ -243,6 +246,7 @@ int main() {
                 printf("Impossibile avviare il Timer\n");
                 break;
             case 0:
+                timeLeft = 0.0;
                 /*Timer: aspetto SO_MAX_TIME e poi lancio il segale*/
                 if (!waitSem(idSemSyncRound, 3)) {
                     ERROR;
@@ -251,21 +255,23 @@ int main() {
                 /*Calcolo il tempo senza sleep() salvando quanto è passato da inizio round*/
                 time(&startTime);
                 time(&endTime);
-                while (!waitSemWithoutWait(idSemSyncRound, 4) && (difftime(endTime, startTime) < SO_MAX_TIME)) {
+                do {
                     nanosleep(&tim, NULL);
+                    timeLeft += 0.01;
                     time(&endTime);
-                }
+                } while(!waitSemWithoutWait(idSemSyncRound, 4) && (difftime(endTime, startTime) < SO_MAX_TIME));
 
                 if (!waitSemWithoutWait(idSemSyncRound, 4)) {
+                    timeLeft = SO_MAX_TIME;
                     if (kill(0, SIGUSR1) < 0) {
                         printf(" - Errore TIMER: ");
                         ERROR;
                     }
                 } else {
-                    printf("Round terminato in %g secondi\n", difftime(endTime, startTime));
+                    printf("Round terminato in %f secondi\n", /*difftime(endTime, startTime)*/timeLeft);
                 }
 
-                *totalTime += difftime(endTime, startTime);
+                *totalTime += timeLeft;/*difftime(endTime, startTime);*/
                 exit(0);
                 break;
             default:
@@ -280,7 +286,7 @@ int main() {
                 for (i = 0; i < SO_NUM_G; i++) {
                     if (!receiveMessageResultRound(idMsgGamer, 1, &resultRound)) { printf("master\n"); }
                     else {
-                        printf("--Giocatore %d: points %d, mosse fatte %d, mosse residue %d\n", resultRound.order + 1, resultRound.points, resultRound.nMovesLeft, resultRound.nMovesDo);
+                        printf("--Giocatore %d: punteggio %d, mosse fatte %d, mosse residue %d\n", resultRound.order + 1, resultRound.points, resultRound.nMovesDo, resultRound.nMovesLeft);
                         dataGamer[resultRound.order].nMovesLeft = resultRound.nMovesLeft;
                         dataGamer[resultRound.order].nMovesDo = resultRound.nMovesDo;
                         dataGamer[resultRound.order].points = resultRound.points;
@@ -304,7 +310,11 @@ int main() {
                         printf("\t[Giocatore %d]:\n", i + 1);
                         printf(RESET_COLOR);
                         printf("\t\tMosse fatte / mosse totali: %lf\n", ((double)dataGamer[i].nMovesDo / (double)(SO_NUM_P * SO_N_MOVES)));
-                        printf("\t\tPunti ottenuti / mosse fatte: %lf\n", ((double)dataGamer[i].points / (double)dataGamer[i].nMovesDo));
+                        if(dataGamer[i].nMovesDo != 0) {
+                            printf("\t\tPunti ottenuti / mosse fatte: %lf\n", ((double)dataGamer[i].points / (double)dataGamer[i].nMovesDo));
+                        } else {
+                            printf("\t\tPunti ottenuti / mosse fatte: non calcolabile\n");
+                        }
                         totalPoints += dataGamer[i].points;
                     }
                     printf(GREEN);

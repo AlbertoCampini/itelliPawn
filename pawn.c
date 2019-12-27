@@ -4,7 +4,7 @@
 
 #define CONF_FILE_PATH "./config"
 
-static int i, points, nMoves, gamerName, SO_BASE, SO_ALTEZZA, idMsgPawns, idSemMatrix, idSemSyncRound, posInMatrix, alreadySend = 0;
+static int i, points, nMoves, gamerName, SO_BASE, SO_ALTEZZA, idMsgPawns, idSemMatrix, idSemSyncRound, posInMatrix, oldPosInMatrix, alreadySend = 0;
 static int *matrix;
 static SyncPawn syncGamer; /*Ricevo dal Gamer*/
 
@@ -20,7 +20,22 @@ static void timeoutHandle (int sig) {
             ERROR;
         }
     }
-    *(matrix + posInMatrix) = gamerName;
+
+    /*Serve per mantenere sicuramente la posizione sulla scacchiera quando scatta il Timer*/
+    switch(syncGamer.strategy) {
+        case MOVES_STRATEGY_DX_OR_SX:
+            if(posInMatrix < 0) {
+                *(matrix + oldPosInMatrix) = gamerName;
+            }
+            break;
+        default:
+            if(posInMatrix >= 0) {
+                *(matrix + posInMatrix) = gamerName;
+            } else {
+                *(matrix + oldPosInMatrix) = gamerName;
+            }
+            break;
+    }
     exit(0);
 }
 
@@ -67,6 +82,7 @@ int main(int argc, char *argv[]) {
     sscanf(argv[1], "%d", &idMatrix);
     sscanf(argv[2], "%d", &idSemMatrix);
     sscanf(argv[3], "%d", &posInMatrix);
+    sscanf(argv[3], "%d", &oldPosInMatrix);
     sscanf(argv[4], "%d", &idMsgPawns);
     sscanf(argv[5], "%d", &idSemSyncRound);
     sscanf(argv[6], "%d", &gamerName);
@@ -93,22 +109,37 @@ int main(int argc, char *argv[]) {
         i = 0, points = 0;
         while(i < nMoves && !waitSemWithoutWait(idSemSyncRound, 4)) {
             /*Pulisco la posizione precedente*/
-            *(matrix + posInMatrix) = 0;
+            *(matrix + oldPosInMatrix) = 0;
 
             /*Trovo la nuova posizione*/
-            posInMatrix = movesStrategy(syncGamer.strategy, idSemMatrix, idSemSyncRound, posInMatrix, SO_BASE, SO_ALTEZZA);
+            posInMatrix = movesStrategy(matrix, syncGamer.strategy, idSemMatrix, idSemSyncRound, oldPosInMatrix, SO_BASE, SO_ALTEZZA);
             if(posInMatrix >= 0) {
                 if(*(matrix + posInMatrix) < 0) {
                     /*Ho preso una Flags*/
                     points += (*(matrix + posInMatrix) * -1);
                     if(!modifySem(idSemSyncRound, 4, -1)) { ERROR; }
-                    //printf("Ho preso la bandierina %d (%d, %d, %d)\n", posInMatrix, gamerName, nMoves - i, getValueOfSem(idSemSyncRound, 4));
                 }
 
-                *(matrix + posInMatrix) = gamerName;
-                //printf("%d ", gamerName);
-                nanosleep(&tim, NULL);
+                switch(syncGamer.strategy) {
+                    case MOVES_STRATEGY_DX_OR_SX:
+                        /*Ritorno alla vecchia posizione (è come se facessi un passo in più)*/
+                        if(*(matrix + posInMatrix) < 0) {
+                            *(matrix + posInMatrix) = 0;
+                        }
+                        *(matrix + oldPosInMatrix) = gamerName;
+                        i++;
+                        break;
+                    default:
+                        *(matrix + posInMatrix) = gamerName;
+                        oldPosInMatrix = posInMatrix;
+                        break;
+                }
+
                 i++;
+                nanosleep(&tim, NULL);
+            } else {
+                /*La strategia non sa che mossa far fare alla pedina e allora si deve stagnare sul posto*/
+                *(matrix + oldPosInMatrix) = gamerName;
             }
         }
 
@@ -116,7 +147,6 @@ int main(int argc, char *argv[]) {
         resultRound.order = syncGamer.order;
         resultRound.points = points;
         resultRound.nMovesLeft = nMoves - i;
-        //printf("Pawn %d: %d - %d\n", gamerName, nMoves, i);
         resultRound.nMovesDo = i;
         if(!sendMessageResultRound(idMsgPawns, 1, resultRound)) {
             ERROR;
