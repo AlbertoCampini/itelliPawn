@@ -40,7 +40,7 @@ static void timeoutHandle (int sig) {
 }
 
 int main(int argc, char *argv[]) {
-    int SO_MIN_HOLD_NSEC, idMatrix;
+    int SO_MIN_HOLD_NSEC, idMatrix, flag;
     ResultRound resultRound;
     struct timespec tim;
 
@@ -103,6 +103,16 @@ int main(int argc, char *argv[]) {
         /*Decremento il SEM3 di -1 per dichiarare al Master che ho ricevuto la strategia*/
         if(!modifySem(idSemSyncRound, 2, -1)) { ERROR; return 0; }
 
+        /*Se la strategia è quella ON_LINE calcolo già la bandierina da seguire*/
+        if(syncGamer.strategy == MOVES_STRATEGY_ON_LINE) {
+            flag = 0;
+            for (i = (oldPosInMatrix / SO_BASE) * SO_BASE, flag = 0; i < (((oldPosInMatrix / SO_BASE) * SO_BASE) + SO_BASE - 1) && flag == 0; i++) {
+                if(matrix[i] < 0) {
+                    flag = i;
+                }
+            }
+        }
+
         /*Attendo l'inizio round*/
         if(!waitSem(idSemSyncRound, 3)) {ERROR; return 0;}
 
@@ -112,7 +122,16 @@ int main(int argc, char *argv[]) {
             *(matrix + oldPosInMatrix) = 0;
 
             /*Trovo la nuova posizione*/
-            posInMatrix = movesStrategy(matrix, syncGamer.strategy, idSemMatrix, idSemSyncRound, oldPosInMatrix, SO_BASE, SO_ALTEZZA);
+            if(syncGamer.strategy == MOVES_STRATEGY_ON_LINE) {
+                if(flag != 0) {
+                    posInMatrix = movesStrategy(matrix, syncGamer.strategy, idSemMatrix, flag, oldPosInMatrix, SO_BASE, SO_ALTEZZA);
+                } else {
+                    posInMatrix = -1;
+                }
+            } else {
+                posInMatrix = movesStrategy(matrix, syncGamer.strategy, idSemMatrix, idSemSyncRound, oldPosInMatrix, SO_BASE, SO_ALTEZZA);
+            }
+
             if(posInMatrix >= 0) {
                 if(*(matrix + posInMatrix) < 0) {
                     /*Ho preso una Flags*/

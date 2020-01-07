@@ -8,7 +8,7 @@ int main(int argc, char *argv[]) {
     srand(time(NULL));
 
     pid_t pidChildKill;
-    int i, posInMatrix, SO_NUM_P, SO_NUM_G, SO_BASE, SO_ALTEZZA, SO_N_MOVES, idMsgGamer, idSemMaster, idSemMatrix, idMatrix, idSemSyncRound, idMsgPawns, statusFork;
+    int i, posInMatrix, SO_NUM_P, SO_NUM_G, SO_BASE, SO_ALTEZZA, SO_N_MOVES, POS_STRATEGY, MOVE_STRATEGY, idMsgGamer, idSemMaster, idSemMatrix, idMatrix, idSemSyncRound, idMsgPawns, statusFork;
     int *matrix, *pidChild;
     char *argsToPawn[ARGS_TO_PASS_OF_PAWNS];
     char bufferIdSemMatrix[MAX_BUFF_SIZE], bufferIdMatrix[MAX_BUFF_SIZE], bufferPosInMatrix[MAX_BUFF_SIZE], bufferIdMsgPawns[MAX_BUFF_SIZE], bufferIdSemSyncRound[MAX_BUFF_SIZE], buffGamerName[MAX_BUFF_SIZE];
@@ -25,19 +25,6 @@ int main(int argc, char *argv[]) {
         return 0;
     }
 
-    /*Imposto i segnali: blocco nella maschera SIGALRM*/
-    /*if(sigprocmask(SIG_BLOCK, &maskSignal, NULL) < 0) {
-        ERROR;
-        return 0;
-    }
-    signalAct.sa_handler = timeoutHandle;
-    signalAct.sa_flags = 0;
-    signalAct.sa_mask = maskSignal;
-    if(sigaction(SIGUSR1, &signalAct, 0) < 0) {
-        ERROR;
-        return 0;
-    }*/
-
     /*Leggo dal file di config*/
     SO_NUM_G = readConfig("SO_NUM_G", CONF_FILE_PATH);
     if(SO_NUM_G < 0) { ERROR; return 0; }
@@ -49,6 +36,10 @@ int main(int argc, char *argv[]) {
     if(SO_ALTEZZA < 0){ ERROR; return 0; }
     SO_N_MOVES = readConfig("SO_N_MOVES", CONF_FILE_PATH);
     if(SO_N_MOVES < 0){ ERROR; return 0; }
+    POS_STRATEGY = readConfig("POS_STRATEGY", CONF_FILE_PATH);
+    if(POS_STRATEGY < 0){ ERROR; return 0; }
+    MOVE_STRATEGY = readConfig("MOVE_STRATEGY", CONF_FILE_PATH);
+    if(MOVE_STRATEGY < 0){ ERROR; return 0; }
 
     /*Acquisisco in input gli argomenti passati da Master*/
     sscanf(argv[1], "%d", &idMsgGamer);
@@ -84,7 +75,7 @@ int main(int argc, char *argv[]) {
         if(!waitSem(idSemMaster, syncMaster.order)) {ERROR;}
 
         /*2) Generazione strategia e posizionamento pedina*/
-        posInMatrix = positionStrategy(matrix, POS_STRATEGY_ODD_OR_EVEN_ROW, syncMaster.order, idSemMatrix, SO_BASE, SO_ALTEZZA);
+        posInMatrix = positionStrategy(matrix, POS_STRATEGY, syncMaster.order, i, idSemMatrix, SO_BASE, SO_ALTEZZA);
         *(matrix + posInMatrix) = syncMaster.name;
         /*Fork dei Pawns passando con execve le coordinate su Matrix e semafori*/
         statusFork = fork();
@@ -147,7 +138,7 @@ int main(int argc, char *argv[]) {
 
         /*Mando il mex a tutti i Pawns con la strategia da utilizzare (SyncPawns)*/
         for(i = 0; i < SO_NUM_P; i++) {
-            syncPawn.strategy = MOVES_STRATEGY_DX_OR_SX;
+            syncPawn.strategy = MOVE_STRATEGY;
             syncPawn.nMoves = dataPawn[i].nMovesLeft;
             syncPawn.order = i;
             if(!sendMessageToPawns(idMsgPawns, *(pidChild + i), syncPawn)) {
@@ -174,8 +165,6 @@ int main(int argc, char *argv[]) {
         if(!sendMessageResultRound(idMsgGamer, 1, resultRoundGamer)) {
             ERROR;
         }
-
-        //printf("Fine round (%d, %d)\n", resultRoundGamer.nMovesLeft, waitSemWithoutWait(idSemSyncRound, 4));
     } while(waitSemWithoutWait(idSemSyncRound, 4));
 
     /*Attendo la morte di tutte le mie Pawns*/

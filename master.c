@@ -21,7 +21,7 @@ int main() {
     srand(time(NULL));
 
     pid_t pidChild;
-    int i, numFlags, numRound, posFlag, statusFork, totalPoints, firstRound, idTotalTime, SO_NUM_G, SO_NUM_P, SO_BASE, SO_ALTEZZA, SO_FLAG_MIN, SO_FLAG_MAX, SO_N_MOVES, SO_MAX_TIME;
+    int i, numFlags, numRound, posFlag, statusFork, totalPoints, firstRound, idTotalTime, actualFlagsPoint, SO_NUM_G, SO_NUM_P, SO_BASE, SO_ALTEZZA, SO_FLAG_MIN, SO_FLAG_MAX, SO_N_MOVES, SO_MAX_TIME, SO_ROUND_SCORE, FLAG_STRATEGY;
     char *argsToGamer[ARGS_TO_PASS_OF_GAMER];
     char bufferIdMsg[MAX_BUFF_SIZE], bufferIdSemGamer[MAX_BUFF_SIZE], bufferIdSemMatrix[MAX_BUFF_SIZE], bufferIdMatrix[MAX_BUFF_SIZE], bufferIdSemSyncRound[MAX_BUFF_SIZE];
     int *matrix;
@@ -57,12 +57,12 @@ int main() {
          ERROR;
          return 0;
      }
-     /*memset(&signalAct, 0, sizeof(signalAct));
+     memset(&signalAct, 0, sizeof(signalAct));
      signalAct.sa_handler = endHandle;
      signalAct.sa_flags = 0;
      sigaddset(&maskSignal, SIGINT);
      signalAct.sa_mask = maskSignal;
-     if(sigaction(SIGINT, &signalAct, 0) < 0) { ERROR; return 0; }*/
+     if(sigaction(SIGINT, &signalAct, 0) < 0) { ERROR; return 0; }
 
     /*Leggo dal file di config*/
     SO_NUM_G = readConfig("SO_NUM_G", CONF_FILE_PATH);
@@ -81,6 +81,10 @@ int main() {
     if(SO_N_MOVES < 0){ ERROR; return 0; }
     SO_MAX_TIME = readConfig("SO_MAX_TIME", CONF_FILE_PATH);
     if(SO_MAX_TIME < 0){ ERROR; return 0; }
+    SO_ROUND_SCORE = readConfig("SO_ROUND_SCORE", CONF_FILE_PATH);
+    if(SO_ROUND_SCORE < 0){ ERROR; return 0; }
+    FLAG_STRATEGY = readConfig("FLAG_STRATEGY", CONF_FILE_PATH);
+    if(FLAG_STRATEGY < 0){ ERROR; return 0; }
 
     firstRound = numRound = 1;
 
@@ -198,18 +202,26 @@ int main() {
         if(!modifySem(idSemSyncRound, 5, SO_NUM_G)) { ERROR; return 0; }
 
         /*2) Posiziono le bandierine*/
+        actualFlagsPoint = 0;
         numFlags = generateRandom(SO_FLAG_MIN, SO_FLAG_MAX);
         printf(MAGENTA);
         printf("Il Master ha posizionato %d flags\n", numFlags);
         printf(RESET_COLOR);
 
         for(i = 0; i < numFlags; i++) {
-            posFlag = flagPositionStrategy(POS_STRATEGY_RANDOM, idSemMatrix, SO_BASE, SO_ALTEZZA);
+            posFlag = flagPositionStrategy(FLAG_STRATEGY, idSemMatrix, SO_BASE, SO_ALTEZZA);
             /*Serve per controllare se non esiste un altra Flag (valore negativo)*/
             while(*(matrix + posFlag) < 0) {
-                posFlag = flagPositionStrategy(POS_STRATEGY_RANDOM, idSemMatrix, SO_BASE, SO_ALTEZZA);
+                posFlag = flagPositionStrategy(FLAG_STRATEGY, idSemMatrix, SO_BASE, SO_ALTEZZA);
             }
-            *(matrix + posFlag) = -1;//((i + 1) * -1);
+
+            /*Assegno un valore alla bandierina*/
+            if(i == numFlags - 1) {
+                *(matrix + posFlag) = (SO_ROUND_SCORE + actualFlagsPoint) * -1;
+            } else {
+                *(matrix + posFlag) = generateRandom(1, SO_ROUND_SCORE / numFlags) * -1;
+                actualFlagsPoint += *(matrix + posFlag);
+            }
         }
 
         /*SEM5: Semaforo per sapere quando sono state prese tutte le flags (è inizializzato al numero di bandierine)*/
@@ -282,11 +294,16 @@ int main() {
                 }
 
                 /*Attendo di ricevere SO_NUM_G messaggi di resoconto del round*/
+                printf(CYAN);
                 printf("\nESITO ROUND %d:\n", numRound);
+                printf(RESET_COLOR);
                 for (i = 0; i < SO_NUM_G; i++) {
                     if (!receiveMessageResultRound(idMsgGamer, 1, &resultRound)) { printf("master\n"); }
                     else {
-                        printf("--Giocatore %d: punteggio %d, mosse fatte %d, mosse residue %d\n", resultRound.order + 1, resultRound.points, resultRound.nMovesDo, resultRound.nMovesLeft);
+                        printf(GREEN);
+                        printf("--Giocatore %d: ", resultRound.order + 1);
+                        printf(RESET_COLOR);
+                        printf("punteggio %d, mosse fatte %d, mosse residue %d\n", resultRound.points, resultRound.nMovesDo, resultRound.nMovesLeft);
                         dataGamer[resultRound.order].nMovesLeft = resultRound.nMovesLeft;
                         dataGamer[resultRound.order].nMovesDo = resultRound.nMovesDo;
                         dataGamer[resultRound.order].points = resultRound.points;
@@ -301,24 +318,37 @@ int main() {
                     printf(RED);
                     printf("\n--TIMEOUT--\n");
                     printf(GREEN);
-                    printf("Gioco terminato in %2lf secondi:\n", *(totalTime));
-                    printf("\t%d bandierine su %d sono state prese (ne mancano %d)\n", numFlags - getValueOfSem(idSemSyncRound, 4), numFlags, getValueOfSem(idSemSyncRound, 4));
-                    printf("\t%d round giocati\n\n", numRound);
+                    printf("Gioco terminato in ");printf(RESET_COLOR);printf("%2lf ", *(totalTime));printf(GREEN);printf("secondi:\n");
+                    printf(RESET_COLOR);printf("\t%d ", numFlags - getValueOfSem(idSemSyncRound, 4));printf(GREEN);
+                    printf("bandierine su ");printf(RESET_COLOR);printf("%d ", numFlags);printf(GREEN);printf("sono state prese (ne mancano ");
+                    printf(RESET_COLOR);printf("%d", getValueOfSem(idSemSyncRound, 4));printf(GREEN);printf(")\n");
+                    printf(RESET_COLOR);printf("\t%d ", numRound);printf(GREEN);printf("round giocati\n\n");
                     totalPoints = 0;
                     for(i = 0; i < SO_NUM_G; i++) {
                         printf(GREEN);
                         printf("\t[Giocatore %d]:\n", i + 1);
                         printf(RESET_COLOR);
-                        printf("\t\tMosse fatte / mosse totali: %lf\n", ((double)dataGamer[i].nMovesDo / (double)(SO_NUM_P * SO_N_MOVES)));
+                        printf("\t\tMosse fatte / mosse totali: ");
+                        printf(GREEN);
+                        printf("%lf\n", ((double)dataGamer[i].nMovesDo / (double)(SO_NUM_P * SO_N_MOVES)));
+                        printf(RESET_COLOR);
                         if(dataGamer[i].nMovesDo != 0) {
-                            printf("\t\tPunti ottenuti / mosse fatte: %lf\n", ((double)dataGamer[i].points / (double)dataGamer[i].nMovesDo));
+                            printf("\t\tPunti ottenuti / mosse fatte: ");
+                            printf(GREEN);
+                            printf("%lf\n", ((double)dataGamer[i].points / (double)dataGamer[i].nMovesDo));
+                            printf(RESET_COLOR);
                         } else {
-                            printf("\t\tPunti ottenuti / mosse fatte: non calcolabile\n");
+                            printf("\t\tPunti ottenuti / mosse fatte: ");
+                            printf(GREEN);
+                            printf("non calcolabile\n");
+                            printf(RESET_COLOR);
                         }
                         totalPoints += dataGamer[i].points;
                     }
+                    printf(RESET_COLOR);
+                    printf("\n\tPunti totali / tempo di gioco totale: ");
                     printf(GREEN);
-                    printf("\tPunti totali / tempo di gioco totale: %lf\n", (totalPoints / *(totalTime)));
+                    printf("%lf\n", (totalPoints / *(totalTime)));
                     printf(RESET_COLOR);
 
                     /*Fine gioco: attendo la morte dei Gamer*/
@@ -343,7 +373,6 @@ int main() {
                     numRound++;
 
                     /*Aspetto la fine del round*/
-                    //printf("Reset dei semafori: %d, %d, %d, %d", getValueOfSem(idSemSyncRound, 1), getValueOfSem(idSemSyncRound, 2), getValueOfSem(idSemSyncRound, 3), getValueOfSem(idSemSyncRound, 5));
                     if(!waitSem(idSemSyncRound, 5)) {ERROR;}
                 }
 
