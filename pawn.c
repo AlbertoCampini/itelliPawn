@@ -67,8 +67,6 @@ int main(int argc, char *argv[]) {
         return 0;
     }
 
-    //signal(SIGUSR1, timeoutHandle);
-
     SO_BASE = readConfig("SO_BASE", CONF_FILE_PATH);
     if(SO_BASE < 0){ ERROR; return 0; }
     SO_ALTEZZA = readConfig("SO_ALTEZZA", CONF_FILE_PATH);

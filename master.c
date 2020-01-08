@@ -1,5 +1,6 @@
 #include "lib/core.h"
 #include "lib/strategy.h"
+#include "lib/graphics.h"
 #include <unistd.h>
 
 #define CONF_FILE_PATH "./config"
@@ -12,21 +13,19 @@ void endHandle(int signal) {
     removeSem(idSemGamer);
     removeQueue(idMsgGamer);
     removeSHM(idMatrix);
-    kill(-getpid(), SIGINT);
+    kill(0, SIGUSR1);
     printf("\nAttuata procedura di terminazione debug\n");
     exit(0);
 }
 
 int main() {
-    srand(time(NULL));
-
     pid_t pidChild;
     int i, numFlags, numRound, posFlag, statusFork, totalPoints, firstRound, idTotalTime, actualFlagsPoint, SO_NUM_G, SO_NUM_P, SO_BASE, SO_ALTEZZA, SO_FLAG_MIN, SO_FLAG_MAX, SO_N_MOVES, SO_MAX_TIME, SO_ROUND_SCORE, FLAG_STRATEGY;
     char *argsToGamer[ARGS_TO_PASS_OF_GAMER];
     char bufferIdMsg[MAX_BUFF_SIZE], bufferIdSemGamer[MAX_BUFF_SIZE], bufferIdSemMatrix[MAX_BUFF_SIZE], bufferIdMatrix[MAX_BUFF_SIZE], bufferIdSemSyncRound[MAX_BUFF_SIZE];
     int *matrix;
     time_t startTime, endTime;
-    double *totalTime;
+    float *totalTime;
     float timeLeft;
 
     ResultRound *dataGamer; /*Array per ogni Gamer che tiene conto dei dati statistici*/
@@ -34,14 +33,17 @@ int main() {
     ResultRound resultRound;
     struct timespec tim;
 
+    sigset_t maskSignal;
+    struct sigaction signalAct;
+
     /*Inizializzo variabili per gestione Timer*/
     tim.tv_sec = 0;
     tim.tv_nsec = 10000000;
     totalTime = 0;
 
-    sigset_t maskSignal;
-    struct sigaction signalAct;
+    srand(time(NULL));
 
+    printTitle();
     /*signalAct.sa_handler = endHandle;
     signalAct.sa_flags = 0;
     signalAct.sa_mask = maskSignal;
@@ -103,12 +105,12 @@ int main() {
     initSHM(matrix, SO_BASE, SO_ALTEZZA, 0);
 
     /*Istanzio il TotalTime condiviso con il Timer*/
-    idTotalTime = createSHM(IPC_PRIVATE, sizeof(double));
+    idTotalTime = createSHM(IPC_PRIVATE, sizeof(float));
     if(!idTotalTime) {
         printf("Errore creazione TotalTime: ");ERROR;
         return 0;
     }
-    totalTime = (double *)attachSHM(idTotalTime);
+    totalTime = (float *)attachSHM(idTotalTime);
     if(totalTime == (void *)-1) {
         printf("Errore attach TotalTime: ");ERROR;
         return 0;
@@ -318,7 +320,7 @@ int main() {
                     printf(RED);
                     printf("\n--TIMEOUT--\n");
                     printf(GREEN);
-                    printf("Gioco terminato in ");printf(RESET_COLOR);printf("%2lf ", *(totalTime));printf(GREEN);printf("secondi:\n");
+                    printf("Gioco terminato in ");printf(RESET_COLOR);printf("%2f ", *(totalTime));printf(GREEN);printf("secondi:\n");
                     printf(RESET_COLOR);printf("\t%d ", numFlags - getValueOfSem(idSemSyncRound, 4));printf(GREEN);
                     printf("bandierine su ");printf(RESET_COLOR);printf("%d ", numFlags);printf(GREEN);printf("sono state prese (ne mancano ");
                     printf(RESET_COLOR);printf("%d", getValueOfSem(idSemSyncRound, 4));printf(GREEN);printf(")\n");
@@ -330,12 +332,12 @@ int main() {
                         printf(RESET_COLOR);
                         printf("\t\tMosse fatte / mosse totali: ");
                         printf(GREEN);
-                        printf("%lf\n", ((double)dataGamer[i].nMovesDo / (double)(SO_NUM_P * SO_N_MOVES)));
+                        printf("%f\n", ((float)dataGamer[i].nMovesDo / (float)(SO_NUM_P * SO_N_MOVES)));
                         printf(RESET_COLOR);
                         if(dataGamer[i].nMovesDo != 0) {
                             printf("\t\tPunti ottenuti / mosse fatte: ");
                             printf(GREEN);
-                            printf("%lf\n", ((double)dataGamer[i].points / (double)dataGamer[i].nMovesDo));
+                            printf("%f\n", ((float)dataGamer[i].points / (float)dataGamer[i].nMovesDo));
                             printf(RESET_COLOR);
                         } else {
                             printf("\t\tPunti ottenuti / mosse fatte: ");
@@ -348,7 +350,7 @@ int main() {
                     printf(RESET_COLOR);
                     printf("\n\tPunti totali / tempo di gioco totale: ");
                     printf(GREEN);
-                    printf("%lf\n", (totalPoints / *(totalTime)));
+                    printf("%f\n", (totalPoints / *(totalTime)));
                     printf(RESET_COLOR);
 
                     /*Fine gioco: attendo la morte dei Gamer*/

@@ -20,20 +20,10 @@
 #define NAME_GAMER_PROCESS "gamer"
 #define NAME_PAWN_PROCESS "pawn"
 
-#define BLU "\033[0;34m"
-#define RED "\033[0;31m"
-#define YELLOW "\033[0;33m"
-#define GREEN "\033[0;32m"
-#define MAGENTA "\033[0;35m"
-#define CYAN "\033[0;36m"
-#define RESET_COLOR "\033[0m"
-#define PRINT_MATRIX printf("%d", matrix[i])
-
 /*CORE FUNCTION*/
 const int readConfig(char *config, const char *fPath);
 void printLastError();
 int generateRandom(int to, int from);
-void printMatrix(int *matrix, const int base, const int higth);
 
 /*CORE STRUCT*/
 typedef struct {

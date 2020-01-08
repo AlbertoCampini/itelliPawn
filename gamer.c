@@ -5,8 +5,6 @@
 #define CONF_FILE_PATH "./config"
 
 int main(int argc, char *argv[]) {
-    srand(time(NULL));
-
     pid_t pidChildKill;
     int i, posInMatrix, SO_NUM_P, SO_NUM_G, SO_BASE, SO_ALTEZZA, SO_N_MOVES, POS_STRATEGY, MOVE_STRATEGY, idMsgGamer, idSemMaster, idSemMatrix, idMatrix, idSemSyncRound, idMsgPawns, statusFork;
     int *matrix, *pidChild;
@@ -19,6 +17,8 @@ int main(int argc, char *argv[]) {
 
     sigset_t maskSignal;
     struct sigaction signalAct;
+
+    srand(time(NULL));
 
     if(argc != (ARGS_TO_PASS_OF_GAMER - 1)) {
         printf("Parametri passati insufficienti");

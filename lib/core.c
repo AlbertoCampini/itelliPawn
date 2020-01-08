@@ -5,13 +5,18 @@ int generateRandom(int to, int from) {
 }
 /*Legge dal file di configurazioni il valore della char *config con la modalità*/
 const int readConfig(char *config, const char *fPath) {
-    FILE *fConf = fopen(fPath, "r");
     int actualMode = -1;
+    char *line;
+    FILE *fConf;
+
+    fConf = fopen(fPath, "r");
     if (fConf == NULL) {
         return -1;
     }
-    char line[MAX_LINE_CONF];
-    while(fgets(line, sizeof(line), fConf) != NULL) {
+
+    line = (char *)malloc(sizeof(char) * MAX_LINE_CONF);
+
+    while(fgets(line, /*sizeof(line)*/sizeof(char) * MAX_LINE_CONF, fConf) != NULL) {
         if(strcmp(line, "") != 0 && strcmp(line, "\n") != 0) {
             if(actualMode == -1) {
                 actualMode = atoi(strtok(line, "#"));
@@ -19,7 +24,6 @@ const int readConfig(char *config, const char *fPath) {
                 int modeRead = atoi(strtok(line, "."));
                 char *configRead = strtok(NULL, ":");
                 int valueRead = atoi(strtok(NULL, ":"));
-                //printf("(%d) %d:%s:%d\n", actualMode, modeRead, configRead, valueRead);
 
                 if(strcmp(config, configRead) == 0) {
                     if(actualMode == modeRead) {
@@ -30,62 +34,12 @@ const int readConfig(char *config, const char *fPath) {
         }
 
     }
+    free(line);
     fclose(fConf);
     return -1;
 }
 void printLastError() {
     printf("%s\n", strerror(errno));
-}
-
-/*Define per output in core.h*/
-void printMatrix(int *matrix, const int base, const int higth) {
-    int i;
-    printf("\n|");
-    for(i = 0; i < (base * higth); i++) {
-        if((i % base) == 0 && i != 0) {
-            printf("\n");
-            printf("|");
-        }
-        if(matrix[i] < 0) {
-            printf("F");
-            printf("|");
-        } else if(matrix[i] == 0) {
-            printf(" |");
-        } else {
-            switch (matrix[i]){
-                case 1:
-                    printf(RED);
-                    PRINT_MATRIX;
-                    printf(RESET_COLOR);
-                    printf("|");
-                    break;
-                case 2:
-                    printf(YELLOW);
-                    PRINT_MATRIX;
-                    printf(RESET_COLOR);
-                    printf("|");
-                    break;
-                case 3:
-                    printf(BLU);
-                    PRINT_MATRIX;
-                    printf(RESET_COLOR);
-                    printf("|");
-                    break;
-                case 4:
-                    printf(GREEN);
-                    PRINT_MATRIX;
-                    printf(RESET_COLOR);
-                    printf("|");
-                    break;
-                default:
-                    printf(RESET_COLOR);
-                    PRINT_MATRIX;
-                    printf("|");
-                    break;
-            }
-        }
-    }
-    printf("\n");
 }
 
 
@@ -145,12 +99,14 @@ int receiveMessageResultRound(int idMsg, long msgType, void *msg) {
 
 int createAndInitSems(key_t semKey, const int nSems, unsigned short valInit) {
     int idSem, i;
+    unsigned short *valsInit;
+    union semun arg;
+
     if((idSem = semget(semKey, nSems, IPC_CREAT | IPC_EXCL)) < 0) {
         return 0;
     }
 
-    union semun arg;
-    unsigned short valsInit[nSems];
+    valsInit = (unsigned short *)malloc(sizeof(unsigned short) * nSems);
     for(i = 0; i < nSems; i++) {
         valsInit[i] = valInit;
     }
@@ -159,6 +115,8 @@ int createAndInitSems(key_t semKey, const int nSems, unsigned short valInit) {
     if(semctl(idSem, 0, SETALL, arg) < 0) {
         return 0;
     }
+
+    free(valsInit);
     return idSem;
 }
 int removeSem(int semId) {
