@@ -40,7 +40,8 @@ static void timeoutHandle (int sig) {
 }
 
 int main(int argc, char *argv[]) {
-    int SO_MIN_HOLD_NSEC, idMatrix, flag;
+    int SO_MIN_HOLD_NSEC, idMatrix, nextFlag, menuChoise;
+    int *flag;
     ResultRound resultRound;
     struct timespec tim;
 
@@ -67,11 +68,12 @@ int main(int argc, char *argv[]) {
         return 0;
     }
 
-    SO_BASE = readConfig("SO_BASE", CONF_FILE_PATH);
+    sscanf(argv[7], "%d", &menuChoise);
+    SO_BASE = readConfig("SO_BASE", CONF_FILE_PATH, menuChoise);
     if(SO_BASE < 0){ ERROR; return 0; }
-    SO_ALTEZZA = readConfig("SO_ALTEZZA", CONF_FILE_PATH);
+    SO_ALTEZZA = readConfig("SO_ALTEZZA", CONF_FILE_PATH, menuChoise);
     if(SO_ALTEZZA < 0){ ERROR; return 0; }
-    SO_MIN_HOLD_NSEC = readConfig("SO_MIN_HOLD_NSEC", CONF_FILE_PATH);
+    SO_MIN_HOLD_NSEC = readConfig("SO_MIN_HOLD_NSEC", CONF_FILE_PATH, menuChoise);
     if(SO_MIN_HOLD_NSEC < 0){ ERROR; return 0; }
 
     tim.tv_sec = 0;
@@ -101,12 +103,13 @@ int main(int argc, char *argv[]) {
         /*Decremento il SEM3 di -1 per dichiarare al Master che ho ricevuto la strategia*/
         if(!modifySem(idSemSyncRound, 2, -1)) { ERROR; return 0; }
 
-        /*Se la strategia è quella ON_LINE calcolo già la bandierina da seguire*/
+        /*Se la strategia è quella ON_LINE calcolo già le bandierine da seguire*/
         if(syncGamer.strategy == MOVES_STRATEGY_ON_LINE) {
-            flag = 0;
-            for (i = (oldPosInMatrix / SO_BASE) * SO_BASE, flag = 0; i < (((oldPosInMatrix / SO_BASE) * SO_BASE) + SO_BASE - 1) && flag == 0; i++) {
+            flag = (int *)malloc(sizeof(int) * 10);
+            for (i = (oldPosInMatrix / SO_BASE) * SO_BASE, nextFlag = 0; i < (((oldPosInMatrix / SO_BASE) * SO_BASE) + SO_BASE - 1); i++) {
                 if(matrix[i] < 0) {
-                    flag = i;
+                    flag[nextFlag] = i;
+                    nextFlag++;
                 }
             }
         }
@@ -114,7 +117,7 @@ int main(int argc, char *argv[]) {
         /*Attendo l'inizio round*/
         if(!waitSem(idSemSyncRound, 3)) {ERROR; return 0;}
 
-        i = 0, points = 0;
+        i = 0, points = 0, nextFlag = 0;
         while(i < nMoves && !waitSemWithoutWait(idSemSyncRound, 4)) {
             /*Pulisco la posizione precedente*/
             *(matrix + oldPosInMatrix) = 0;
@@ -122,7 +125,7 @@ int main(int argc, char *argv[]) {
             /*Trovo la nuova posizione*/
             if(syncGamer.strategy == MOVES_STRATEGY_ON_LINE) {
                 if(flag != 0) {
-                    posInMatrix = movesStrategy(matrix, syncGamer.strategy, idSemMatrix, flag, oldPosInMatrix, SO_BASE, SO_ALTEZZA);
+                    posInMatrix = movesStrategy(matrix, syncGamer.strategy, idSemMatrix, flag[nextFlag], oldPosInMatrix, SO_BASE, SO_ALTEZZA);
                 } else {
                     posInMatrix = -1;
                 }
@@ -135,9 +138,11 @@ int main(int argc, char *argv[]) {
                     /*Ho preso una Flags*/
                     points += (*(matrix + posInMatrix) * -1);
                     if(!modifySem(idSemSyncRound, 4, -1)) { ERROR; }
+                    if(syncGamer.strategy == MOVES_STRATEGY_ON_LINE) { nextFlag++; }
                 }
 
                 switch(syncGamer.strategy) {
+                    case MOVES_STRATEGY_DIAGONAL:
                     case MOVES_STRATEGY_DX_OR_SX:
                         /*Ritorno alla vecchia posizione (è come se facessi un passo in più)*/
                         if(*(matrix + posInMatrix) < 0) {
@@ -145,6 +150,11 @@ int main(int argc, char *argv[]) {
                         }
                         *(matrix + oldPosInMatrix) = gamerName;
                         i++;
+
+                        /*Se ho fatto una diagonale devo scalare ancora una mossa: se la base e la colonna di posInMatrix sono entrabe diverse da quelle di oldPosInMatrix allora è una diagonale*/
+                        if(((posInMatrix / SO_BASE) != (oldPosInMatrix / SO_BASE)) && ((posInMatrix - ((posInMatrix / SO_BASE) * SO_BASE) - 1) != (oldPosInMatrix - ((oldPosInMatrix / SO_BASE) * SO_BASE) - 1))) {
+                            i += 2;
+                        }
                         break;
                     default:
                         *(matrix + posInMatrix) = gamerName;
@@ -159,6 +169,7 @@ int main(int argc, char *argv[]) {
                 *(matrix + oldPosInMatrix) = gamerName;
             }
         }
+        free(flag);
 
         /*Invio il resoconto al mio Gamer*/
         resultRound.order = syncGamer.order;

@@ -17,9 +17,6 @@ void printTitle() {
     printf("\n");
     printf("\tFatto da Alberto Campini e Lorenzo Bergadano\n\n");
     printf(RESET_COLOR);
-
-    printf("Premi un tasto per iniziare il gioco\n");
-    getc(stdin);
 }
 
 void printMatrix(int *matrix, const int base, const int higth) {

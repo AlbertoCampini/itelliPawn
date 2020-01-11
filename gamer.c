@@ -6,7 +6,7 @@
 
 int main(int argc, char *argv[]) {
     pid_t pidChildKill;
-    int i, posInMatrix, SO_NUM_P, SO_NUM_G, SO_BASE, SO_ALTEZZA, SO_N_MOVES, POS_STRATEGY, MOVE_STRATEGY, idMsgGamer, idSemMaster, idSemMatrix, idMatrix, idSemSyncRound, idMsgPawns, statusFork;
+    int i, posInMatrix, menuChoise, SO_NUM_P, SO_NUM_G, SO_BASE, SO_ALTEZZA, SO_N_MOVES, POS_STRATEGY, MOVE_STRATEGY, idMsgGamer, idSemMaster, idSemMatrix, idMatrix, idSemSyncRound, idMsgPawns, statusFork;
     int *matrix, *pidChild;
     char *argsToPawn[ARGS_TO_PASS_OF_PAWNS];
     char bufferIdSemMatrix[MAX_BUFF_SIZE], bufferIdMatrix[MAX_BUFF_SIZE], bufferPosInMatrix[MAX_BUFF_SIZE], bufferIdMsgPawns[MAX_BUFF_SIZE], bufferIdSemSyncRound[MAX_BUFF_SIZE], buffGamerName[MAX_BUFF_SIZE];
@@ -25,20 +25,21 @@ int main(int argc, char *argv[]) {
         return 0;
     }
 
+    sscanf(argv[6], "%d", &menuChoise);
     /*Leggo dal file di config*/
-    SO_NUM_G = readConfig("SO_NUM_G", CONF_FILE_PATH);
+    SO_NUM_G = readConfig("SO_NUM_G", CONF_FILE_PATH, menuChoise);
     if(SO_NUM_G < 0) { ERROR; return 0; }
-    SO_NUM_P = readConfig("SO_NUM_P", CONF_FILE_PATH);
+    SO_NUM_P = readConfig("SO_NUM_P", CONF_FILE_PATH, menuChoise);
     if(SO_NUM_P < 0) { ERROR; return 0; }
-    SO_BASE = readConfig("SO_BASE", CONF_FILE_PATH);
+    SO_BASE = readConfig("SO_BASE", CONF_FILE_PATH, menuChoise);
     if(SO_BASE < 0){ ERROR; return 0; }
-    SO_ALTEZZA = readConfig("SO_ALTEZZA", CONF_FILE_PATH);
+    SO_ALTEZZA = readConfig("SO_ALTEZZA", CONF_FILE_PATH, menuChoise);
     if(SO_ALTEZZA < 0){ ERROR; return 0; }
-    SO_N_MOVES = readConfig("SO_N_MOVES", CONF_FILE_PATH);
+    SO_N_MOVES = readConfig("SO_N_MOVES", CONF_FILE_PATH, menuChoise);
     if(SO_N_MOVES < 0){ ERROR; return 0; }
-    POS_STRATEGY = readConfig("POS_STRATEGY", CONF_FILE_PATH);
+    POS_STRATEGY = readConfig("POS_STRATEGY", CONF_FILE_PATH, menuChoise);
     if(POS_STRATEGY < 0){ ERROR; return 0; }
-    MOVE_STRATEGY = readConfig("MOVE_STRATEGY", CONF_FILE_PATH);
+    MOVE_STRATEGY = readConfig("MOVE_STRATEGY", CONF_FILE_PATH, menuChoise);
     if(MOVE_STRATEGY < 0){ ERROR; return 0; }
 
     /*Acquisisco in input gli argomenti passati da Master*/
@@ -93,7 +94,8 @@ int main(int argc, char *argv[]) {
             argsToPawn[4] = bufferIdMsgPawns;
             argsToPawn[5] = bufferIdSemSyncRound;
             argsToPawn[6] = buffGamerName;
-            argsToPawn[7] = NULL;
+            argsToPawn[7] = argv[6]; /*è il riabaltamento della modalità di gioco scelta*/
+            argsToPawn[8] = NULL;
             execve(NAME_PAWN_PROCESS, argsToPawn, NULL);
             break;
         } else if(statusFork == -1) {
@@ -168,8 +170,7 @@ int main(int argc, char *argv[]) {
     } while(waitSemWithoutWait(idSemSyncRound, 4));
 
     /*Attendo la morte di tutte le mie Pawns*/
-    while((pidChildKill = wait(NULL)) != -1) {
-    }
+    while((pidChildKill = wait(NULL)) != -1) {}
 
     free(pidChild);
     removeQueue(idMsgPawns);

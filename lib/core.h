@@ -9,19 +9,17 @@
 #include <sys/shm.h>
 #include <sys/signal.h>
 
-#define ARGS_TO_PASS_OF_GAMER 7
-#define ARGS_TO_PASS_OF_PAWNS 8
+#define ARGS_TO_PASS_OF_GAMER 8
+#define ARGS_TO_PASS_OF_PAWNS 9
 
 #define ERROR printLastError()
-#define EASY_MODE 0
-#define HARD_MODE 1
 #define MAX_LINE_CONF 100
 #define MAX_BUFF_SIZE 20
 #define NAME_GAMER_PROCESS "gamer"
 #define NAME_PAWN_PROCESS "pawn"
 
 /*CORE FUNCTION*/
-const int readConfig(char *config, const char *fPath);
+int readConfig(char *config, const char *fPath, int preferedMode);
 void printLastError();
 int generateRandom(int to, int from);
 

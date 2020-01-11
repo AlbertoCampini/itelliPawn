@@ -4,8 +4,8 @@ int generateRandom(int to, int from) {
     return (rand() % (from - to + 1)) + to;
 }
 /*Legge dal file di configurazioni il valore della char *config con la modalità*/
-const int readConfig(char *config, const char *fPath) {
-    int actualMode = -1;
+int readConfig(char *config, const char *fPath, int preferedMode) {
+    /*int actualMode = -1;*/
     char *line;
     FILE *fConf;
 
@@ -16,9 +16,9 @@ const int readConfig(char *config, const char *fPath) {
 
     line = (char *)malloc(sizeof(char) * MAX_LINE_CONF);
 
-    while(fgets(line, /*sizeof(line)*/sizeof(char) * MAX_LINE_CONF, fConf) != NULL) {
+    while(fgets(line, sizeof(char) * MAX_LINE_CONF, fConf) != NULL) {
         if(strcmp(line, "") != 0 && strcmp(line, "\n") != 0) {
-            if(actualMode == -1) {
+            /*if(actualMode < 0) {
                 actualMode = atoi(strtok(line, "#"));
             } else {
                 int modeRead = atoi(strtok(line, "."));
@@ -30,10 +30,20 @@ const int readConfig(char *config, const char *fPath) {
                         return valueRead;
                     }
                 }
+            }*/
+
+            int modeRead = atoi(strtok(line, "."));
+            char *configRead = strtok(NULL, ":");
+            int valueRead = atoi(strtok(NULL, ":"));
+
+            if(strcmp(config, configRead) == 0) {
+                if(preferedMode == modeRead) {
+                    return valueRead;
+                }
             }
         }
-
     }
+
     free(line);
     fclose(fConf);
     return -1;

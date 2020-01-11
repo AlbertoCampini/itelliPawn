@@ -20,9 +20,9 @@ void endHandle(int signal) {
 
 int main() {
     pid_t pidChild;
-    int i, numFlags, numRound, posFlag, statusFork, totalPoints, firstRound, idTotalTime, actualFlagsPoint, SO_NUM_G, SO_NUM_P, SO_BASE, SO_ALTEZZA, SO_FLAG_MIN, SO_FLAG_MAX, SO_N_MOVES, SO_MAX_TIME, SO_ROUND_SCORE, FLAG_STRATEGY;
+    int i, numFlags, numRound, posFlag, statusFork, totalPoints, firstRound, idTotalTime, actualFlagsPoint, gamerWin, menuChoise, SO_NUM_G, SO_NUM_P, SO_BASE, SO_ALTEZZA, SO_FLAG_MIN, SO_FLAG_MAX, SO_N_MOVES, SO_MAX_TIME, SO_ROUND_SCORE, FLAG_STRATEGY;
     char *argsToGamer[ARGS_TO_PASS_OF_GAMER];
-    char bufferIdMsg[MAX_BUFF_SIZE], bufferIdSemGamer[MAX_BUFF_SIZE], bufferIdSemMatrix[MAX_BUFF_SIZE], bufferIdMatrix[MAX_BUFF_SIZE], bufferIdSemSyncRound[MAX_BUFF_SIZE];
+    char bufferIdMsg[MAX_BUFF_SIZE], bufferIdSemGamer[MAX_BUFF_SIZE], bufferIdSemMatrix[MAX_BUFF_SIZE], bufferIdMatrix[MAX_BUFF_SIZE], bufferIdSemSyncRound[MAX_BUFF_SIZE], bufferMenuChoise[2];
     int *matrix;
     time_t startTime, endTime;
     float *totalTime;
@@ -41,9 +41,21 @@ int main() {
     tim.tv_nsec = 10000000;
     totalTime = 0;
 
+    /*Inizializzo la radice randomica*/
     srand(time(NULL));
 
-    printTitle();
+    /*Menu*/
+    do {
+        system("clear");
+        printTitle();
+        printf("\t1) Easy mode\n");
+        printf("\t2) Hard mode\n");
+        printf("\t> ");
+        scanf("%d", &menuChoise);
+    } while(menuChoise != 1 && menuChoise != 2);
+    menuChoise -= 1;
+    system("clear");
+
     /*signalAct.sa_handler = endHandle;
     signalAct.sa_flags = 0;
     signalAct.sa_mask = maskSignal;
@@ -55,10 +67,8 @@ int main() {
     /*Imposto i segnali: blocco nella maschera SIGUSR1 verranno ereditati da gamer e pawn*/
      sigemptyset(&maskSignal);
      sigaddset(&maskSignal, SIGUSR1);
-     if(sigprocmask(SIG_BLOCK, &maskSignal, NULL) < 0) {
-         ERROR;
-         return 0;
-     }
+     if(sigprocmask(SIG_BLOCK, &maskSignal, NULL) < 0) { ERROR; return 0; }
+     /*Setto il segnale per la procedura di terminazione (CRTL-C)*/
      memset(&signalAct, 0, sizeof(signalAct));
      signalAct.sa_handler = endHandle;
      signalAct.sa_flags = 0;
@@ -67,30 +77,30 @@ int main() {
      if(sigaction(SIGINT, &signalAct, 0) < 0) { ERROR; return 0; }
 
     /*Leggo dal file di config*/
-    SO_NUM_G = readConfig("SO_NUM_G", CONF_FILE_PATH);
-    if(SO_NUM_G < 0){ ERROR; return 0; }
-    SO_NUM_P = readConfig("SO_NUM_P", CONF_FILE_PATH);
-    if(SO_NUM_P < 0){ ERROR; return 0; }
-    SO_BASE = readConfig("SO_BASE", CONF_FILE_PATH);
-    if(SO_BASE < 0){ ERROR; return 0; }
-    SO_ALTEZZA = readConfig("SO_ALTEZZA", CONF_FILE_PATH);
-    if(SO_ALTEZZA < 0){ ERROR; return 0; }
-    SO_FLAG_MIN = readConfig("SO_FLAG_MIN", CONF_FILE_PATH);
+    SO_NUM_G = readConfig("SO_NUM_G", CONF_FILE_PATH, menuChoise);
+    if(SO_NUM_G <= 0){ ERROR; return 0; }
+    SO_NUM_P = readConfig("SO_NUM_P", CONF_FILE_PATH, menuChoise);
+    if(SO_NUM_P <= 0){ ERROR; return 0; }
+    SO_BASE = readConfig("SO_BASE", CONF_FILE_PATH, menuChoise);
+    if(SO_BASE <= 0){ ERROR; return 0; }
+    SO_ALTEZZA = readConfig("SO_ALTEZZA", CONF_FILE_PATH, menuChoise);
+    if(SO_ALTEZZA <= 0){ ERROR; return 0; }
+    SO_FLAG_MIN = readConfig("SO_FLAG_MIN", CONF_FILE_PATH, menuChoise);
     if(SO_FLAG_MIN < 0){ ERROR; return 0; }
-    SO_FLAG_MAX = readConfig("SO_FLAG_MAX", CONF_FILE_PATH);
+    SO_FLAG_MAX = readConfig("SO_FLAG_MAX", CONF_FILE_PATH, menuChoise);
     if(SO_FLAG_MAX < 0){ ERROR; return 0; }
-    SO_N_MOVES = readConfig("SO_N_MOVES", CONF_FILE_PATH);
+    SO_N_MOVES = readConfig("SO_N_MOVES", CONF_FILE_PATH, menuChoise);
     if(SO_N_MOVES < 0){ ERROR; return 0; }
-    SO_MAX_TIME = readConfig("SO_MAX_TIME", CONF_FILE_PATH);
+    SO_MAX_TIME = readConfig("SO_MAX_TIME", CONF_FILE_PATH, menuChoise);
     if(SO_MAX_TIME < 0){ ERROR; return 0; }
-    SO_ROUND_SCORE = readConfig("SO_ROUND_SCORE", CONF_FILE_PATH);
-    if(SO_ROUND_SCORE < 0){ ERROR; return 0; }
-    FLAG_STRATEGY = readConfig("FLAG_STRATEGY", CONF_FILE_PATH);
-    if(FLAG_STRATEGY < 0){ ERROR; return 0; }
+    SO_ROUND_SCORE = readConfig("SO_ROUND_SCORE", CONF_FILE_PATH, menuChoise);
+    if(SO_ROUND_SCORE <= 0){ ERROR; return 0; }
+    FLAG_STRATEGY = readConfig("FLAG_STRATEGY", CONF_FILE_PATH, menuChoise);
+    if(FLAG_STRATEGY < 0){ FLAG_STRATEGY = 0; }
 
     firstRound = numRound = 1;
 
-    /*Ottengo il puntatore alla mem condivisa di dimensione SO_ALTEZZA * SO_BASE*/
+    /*Ottengo il puntatore alla memoria condivisa di dimensione SO_ALTEZZA * SO_BASE*/
     idMatrix = createSHM(IPC_PRIVATE, (SO_ALTEZZA * SO_BASE) * sizeof(int));
     if(!idMatrix) {
         printf("Errore creazione Matrix: ");ERROR;
@@ -163,13 +173,15 @@ int main() {
             sprintf(bufferIdSemMatrix, "%d", idSemMatrix);
             sprintf(bufferIdMatrix, "%d", idMatrix);
             sprintf(bufferIdSemSyncRound, "%d", idSemSyncRound);
+            sprintf(bufferMenuChoise, "%d", menuChoise);
             argsToGamer[0] = NAME_GAMER_PROCESS;
             argsToGamer[1] = bufferIdMsg;
             argsToGamer[2] = bufferIdSemGamer;
             argsToGamer[3] = bufferIdSemMatrix;
             argsToGamer[4] = bufferIdMatrix;
             argsToGamer[5] = bufferIdSemSyncRound;
-            argsToGamer[6] = NULL;
+            argsToGamer[6] = bufferMenuChoise;
+            argsToGamer[7] = NULL;
             execve(NAME_GAMER_PROCESS, argsToGamer, NULL);
             break;
         } else if(statusFork == -1){
@@ -231,7 +243,10 @@ int main() {
 
         /*Stampo la matrix e le metriche del punto 1.6*/
         for(i = 0; i < SO_NUM_G; i++) {
-            printf("--Giocatore %d: punteggio %d, mosse fatte %d, mosse residue %d\n", (dataGamer + i)->order + 1, (dataGamer + i)->points, (dataGamer + i)->nMovesDo, (dataGamer + i)->nMovesLeft);
+            printf(GREEN);
+            printf("--Giocatore %d: ", (dataGamer + i)->order + 1);
+            printf(RESET_COLOR);
+            printf("punteggio %d, mosse fatte %d, mosse residue %d\n", (dataGamer + i)->points, (dataGamer + i)->nMovesDo, (dataGamer + i)->nMovesLeft);
         }
         printf(CYAN);
         printf("\n--Situazione INIZIALE della scacchiera--");
@@ -317,15 +332,13 @@ int main() {
 
                 /*Se scatta il timer e non ho preso tutte le bandierine stampo lo stato del semaforo 4 (quante bandierine mancano)*/
                 if (!waitSemWithoutWait(idSemSyncRound, 4)) {
-                    printf(RED);
-                    printf("\n--TIMEOUT--\n");
                     printf(GREEN);
-                    printf("Gioco terminato in ");printf(RESET_COLOR);printf("%2f ", *(totalTime));printf(GREEN);printf("secondi:\n");
+                    printf("\nGioco terminato in ");printf(RESET_COLOR);printf("%2f ", *(totalTime));printf(GREEN);printf("secondi:\n");
                     printf(RESET_COLOR);printf("\t%d ", numFlags - getValueOfSem(idSemSyncRound, 4));printf(GREEN);
                     printf("bandierine su ");printf(RESET_COLOR);printf("%d ", numFlags);printf(GREEN);printf("sono state prese (ne mancano ");
                     printf(RESET_COLOR);printf("%d", getValueOfSem(idSemSyncRound, 4));printf(GREEN);printf(")\n");
                     printf(RESET_COLOR);printf("\t%d ", numRound);printf(GREEN);printf("round giocati\n\n");
-                    totalPoints = 0;
+                    totalPoints = 0; gamerWin = 1;
                     for(i = 0; i < SO_NUM_G; i++) {
                         printf(GREEN);
                         printf("\t[Giocatore %d]:\n", i + 1);
@@ -346,12 +359,30 @@ int main() {
                             printf(RESET_COLOR);
                         }
                         totalPoints += dataGamer[i].points;
+                        /*Calcolo del giocatore vincitore: uso gamerWin = 0 per stabilire la partità in parità*/
+                        if(i > 0 && dataGamer[i].points >= dataGamer[i - 1].points) {
+                            if(dataGamer[i].points > dataGamer[i - 1].points) {
+                                gamerWin = i + 1;
+                            } else {
+                                gamerWin = 0;
+                            }
+                        }
+
                     }
                     printf(RESET_COLOR);
                     printf("\n\tPunti totali / tempo di gioco totale: ");
                     printf(GREEN);
-                    printf("%f\n", (totalPoints / *(totalTime)));
-                    printf(RESET_COLOR);
+                    printf("%f\n\n", (totalPoints / *(totalTime)));
+                    if(gamerWin == 0) {
+                        printf("Il gioco finisce in ");
+                        printf(RESET_COLOR);
+                        printf("pareggio!\n");
+                    } else {
+                        printf("Vince il ");
+                        printf(RESET_COLOR);
+                        printf("Giocatore %d!\n", gamerWin);
+                    }
+
 
                     /*Fine gioco: attendo la morte dei Gamer*/
                     while ((pidChild = wait(NULL)) != -1) {}
