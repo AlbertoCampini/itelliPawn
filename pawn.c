@@ -68,6 +68,7 @@ int main(int argc, char *argv[]) {
         return 0;
     }
 
+    /*Leggo dal file di config*/
     sscanf(argv[7], "%d", &menuChoise);
     SO_BASE = readConfig("SO_BASE", CONF_FILE_PATH, menuChoise);
     if(SO_BASE < 0){ ERROR; return 0; }
@@ -169,7 +170,10 @@ int main(int argc, char *argv[]) {
                 *(matrix + oldPosInMatrix) = gamerName;
             }
         }
-        free(flag);
+
+        if(syncGamer.strategy == MOVES_STRATEGY_ON_LINE) {
+            free(flag);
+        }
 
         /*Invio il resoconto al mio Gamer*/
         resultRound.order = syncGamer.order;

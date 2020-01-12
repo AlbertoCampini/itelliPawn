@@ -15,9 +15,18 @@ int readConfig(char *config, const char *fPath, int preferedMode) {
     }
 
     line = (char *)malloc(sizeof(char) * MAX_LINE_CONF);
-
+    preferedMode -= 1;
     while(fgets(line, sizeof(char) * MAX_LINE_CONF, fConf) != NULL) {
         if(strcmp(line, "") != 0 && strcmp(line, "\n") != 0) {
+            int modeRead = atoi(strtok(line, "."));
+            char *configRead = strtok(NULL, ":");
+            int valueRead = atoi(strtok(NULL, ":"));
+
+            if(strcmp(config, configRead) == 0) {
+                if(preferedMode == modeRead) {
+                    return valueRead;
+                }
+            }
             /*if(actualMode < 0) {
                 actualMode = atoi(strtok(line, "#"));
             } else {
@@ -31,16 +40,6 @@ int readConfig(char *config, const char *fPath, int preferedMode) {
                     }
                 }
             }*/
-
-            int modeRead = atoi(strtok(line, "."));
-            char *configRead = strtok(NULL, ":");
-            int valueRead = atoi(strtok(NULL, ":"));
-
-            if(strcmp(config, configRead) == 0) {
-                if(preferedMode == modeRead) {
-                    return valueRead;
-                }
-            }
         }
     }
 

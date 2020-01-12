@@ -22,7 +22,7 @@ int main() {
     pid_t pidChild;
     int i, numFlags, numRound, posFlag, statusFork, totalPoints, firstRound, idTotalTime, actualFlagsPoint, gamerWin, menuChoise, SO_NUM_G, SO_NUM_P, SO_BASE, SO_ALTEZZA, SO_FLAG_MIN, SO_FLAG_MAX, SO_N_MOVES, SO_MAX_TIME, SO_ROUND_SCORE, FLAG_STRATEGY;
     char *argsToGamer[ARGS_TO_PASS_OF_GAMER];
-    char bufferIdMsg[MAX_BUFF_SIZE], bufferIdSemGamer[MAX_BUFF_SIZE], bufferIdSemMatrix[MAX_BUFF_SIZE], bufferIdMatrix[MAX_BUFF_SIZE], bufferIdSemSyncRound[MAX_BUFF_SIZE], bufferMenuChoise[2];
+    char bufferIdMsg[MAX_BUFF_SIZE], bufferIdSemGamer[MAX_BUFF_SIZE], bufferIdSemMatrix[MAX_BUFF_SIZE], bufferIdMatrix[MAX_BUFF_SIZE], bufferIdSemSyncRound[MAX_BUFF_SIZE], bufferMenuChoise[MAX_BUFF_SIZE];
     int *matrix;
     time_t startTime, endTime;
     float *totalTime;
@@ -45,6 +45,7 @@ int main() {
     srand(time(NULL));
 
     /*Menu*/
+    /*Menu*/
     do {
         system("clear");
         printTitle();
@@ -53,7 +54,6 @@ int main() {
         printf("\t> ");
         scanf("%d", &menuChoise);
     } while(menuChoise != 1 && menuChoise != 2);
-    menuChoise -= 1;
     system("clear");
 
     /*signalAct.sa_handler = endHandle;

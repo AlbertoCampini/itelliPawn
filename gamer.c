@@ -25,16 +25,16 @@ int main(int argc, char *argv[]) {
         return 0;
     }
 
-    sscanf(argv[6], "%d", &menuChoise);
     /*Leggo dal file di config*/
+    sscanf(argv[6], "%d", &menuChoise);
     SO_NUM_G = readConfig("SO_NUM_G", CONF_FILE_PATH, menuChoise);
-    if(SO_NUM_G < 0) { ERROR; return 0; }
+    if(SO_NUM_G <= 0) { ERROR; return 0; }
     SO_NUM_P = readConfig("SO_NUM_P", CONF_FILE_PATH, menuChoise);
-    if(SO_NUM_P < 0) { ERROR; return 0; }
+    if(SO_NUM_P <= 0) { ERROR; return 0; }
     SO_BASE = readConfig("SO_BASE", CONF_FILE_PATH, menuChoise);
-    if(SO_BASE < 0){ ERROR; return 0; }
+    if(SO_BASE <= 0){ ERROR; return 0; }
     SO_ALTEZZA = readConfig("SO_ALTEZZA", CONF_FILE_PATH, menuChoise);
-    if(SO_ALTEZZA < 0){ ERROR; return 0; }
+    if(SO_ALTEZZA <= 0){ ERROR; return 0; }
     SO_N_MOVES = readConfig("SO_N_MOVES", CONF_FILE_PATH, menuChoise);
     if(SO_N_MOVES < 0){ ERROR; return 0; }
     POS_STRATEGY = readConfig("POS_STRATEGY", CONF_FILE_PATH, menuChoise);
@@ -94,7 +94,7 @@ int main(int argc, char *argv[]) {
             argsToPawn[4] = bufferIdMsgPawns;
             argsToPawn[5] = bufferIdSemSyncRound;
             argsToPawn[6] = buffGamerName;
-            argsToPawn[7] = argv[6]; /*è il riabaltamento della modalità di gioco scelta*/
+            argsToPawn[7] = argv[6];
             argsToPawn[8] = NULL;
             execve(NAME_PAWN_PROCESS, argsToPawn, NULL);
             break;
