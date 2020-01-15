@@ -23,6 +23,7 @@ static void timeoutHandle (int sig) {
 
     /*Serve per mantenere sicuramente la posizione sulla scacchiera quando scatta il Timer*/
     switch(syncGamer.strategy) {
+        case MOVES_STRATEGY_DIAGONAL:
         case MOVES_STRATEGY_DX_OR_SX:
             if(posInMatrix < 0) {
                 *(matrix + oldPosInMatrix) = gamerName;
@@ -107,6 +108,10 @@ int main(int argc, char *argv[]) {
         /*Se la strategia è quella ON_LINE calcolo già le bandierine da seguire*/
         if(syncGamer.strategy == MOVES_STRATEGY_ON_LINE) {
             flag = (int *)malloc(sizeof(int) * 10);
+            /*Inizializzo il vettore*/
+            for(i = 0; i < 10; i++) {
+                flag[i] = 0;
+            }
             for (i = (oldPosInMatrix / SO_BASE) * SO_BASE, nextFlag = 0; i < (((oldPosInMatrix / SO_BASE) * SO_BASE) + SO_BASE - 1); i++) {
                 if(matrix[i] < 0) {
                     flag[nextFlag] = i;
@@ -125,7 +130,7 @@ int main(int argc, char *argv[]) {
 
             /*Trovo la nuova posizione*/
             if(syncGamer.strategy == MOVES_STRATEGY_ON_LINE) {
-                if(flag != 0) {
+                if(flag[nextFlag] != 0) {
                     posInMatrix = movesStrategy(matrix, syncGamer.strategy, idSemMatrix, flag[nextFlag], oldPosInMatrix, SO_BASE, SO_ALTEZZA);
                 } else {
                     posInMatrix = -1;
@@ -151,10 +156,13 @@ int main(int argc, char *argv[]) {
                         }
                         *(matrix + oldPosInMatrix) = gamerName;
                         i++;
+                        nanosleep(&tim, NULL);
 
                         /*Se ho fatto una diagonale devo scalare ancora una mossa: se la base e la colonna di posInMatrix sono entrabe diverse da quelle di oldPosInMatrix allora è una diagonale*/
                         if(((posInMatrix / SO_BASE) != (oldPosInMatrix / SO_BASE)) && ((posInMatrix - ((posInMatrix / SO_BASE) * SO_BASE) - 1) != (oldPosInMatrix - ((oldPosInMatrix / SO_BASE) * SO_BASE) - 1))) {
                             i += 2;
+                            nanosleep(&tim, NULL);
+                            nanosleep(&tim, NULL);
                         }
                         break;
                     default:
@@ -184,7 +192,8 @@ int main(int argc, char *argv[]) {
             ERROR;
         }
 
-        if(!waitSem(idSemSyncRound, 5)) {ERROR;}
+        /*if(!waitSem(idSemSyncRound, 5)) {ERROR;}
+        printf("Pawn %d ricomincio il round\n", gamerName);*/
     } while(1);
 
     return 0;

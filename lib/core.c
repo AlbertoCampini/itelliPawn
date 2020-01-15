@@ -53,7 +53,7 @@ void printLastError() {
 
 
 int createMsgQueue(key_t key) {
-    int id = msgget(key, IPC_CREAT | IPC_EXCL);
+    int id = msgget(key, IPC_CREAT | IPC_EXCL | 0666);
     if(id < 0) {
         return 0;
     }
@@ -111,7 +111,7 @@ int createAndInitSems(key_t semKey, const int nSems, unsigned short valInit) {
     unsigned short *valsInit;
     union semun arg;
 
-    if((idSem = semget(semKey, nSems, IPC_CREAT | IPC_EXCL)) < 0) {
+    if((idSem = semget(semKey, nSems, IPC_CREAT | IPC_EXCL | 0666)) < 0) {
         return 0;
     }
 
@@ -170,7 +170,7 @@ int getValueOfSem(int semId, int semNum) {
 }
 
 int createSHM(key_t key, size_t dim) {
-    int idSHM = shmget(key, dim, IPC_CREAT | IPC_EXCL);
+    int idSHM = shmget(key, dim, IPC_CREAT | IPC_EXCL | 0666);
     if(idSHM < 0) {
         return 0;
     }

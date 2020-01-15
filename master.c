@@ -20,7 +20,7 @@ void endHandle(int signal) {
 
 int main() {
     pid_t pidChild;
-    int i, numFlags, numRound, posFlag, statusFork, totalPoints, firstRound, idTotalTime, actualFlagsPoint, gamerWin, menuChoise, SO_NUM_G, SO_NUM_P, SO_BASE, SO_ALTEZZA, SO_FLAG_MIN, SO_FLAG_MAX, SO_N_MOVES, SO_MAX_TIME, SO_ROUND_SCORE, FLAG_STRATEGY;
+    int i, numFlags, numRound, posFlag, statusFork, totalPoints, idTotalTime, actualFlagsPoint, gamerWin, menuChoise, SO_NUM_G, SO_NUM_P, SO_BASE, SO_ALTEZZA, SO_FLAG_MIN, SO_FLAG_MAX, SO_N_MOVES, SO_MAX_TIME, SO_ROUND_SCORE, FLAG_STRATEGY;
     char *argsToGamer[ARGS_TO_PASS_OF_GAMER];
     char bufferIdMsg[MAX_BUFF_SIZE], bufferIdSemGamer[MAX_BUFF_SIZE], bufferIdSemMatrix[MAX_BUFF_SIZE], bufferIdMatrix[MAX_BUFF_SIZE], bufferIdSemSyncRound[MAX_BUFF_SIZE], bufferMenuChoise[MAX_BUFF_SIZE];
     int *matrix;
@@ -44,7 +44,6 @@ int main() {
     /*Inizializzo la radice randomica*/
     srand(time(NULL));
 
-    /*Menu*/
     /*Menu*/
     do {
         system("clear");
@@ -98,7 +97,7 @@ int main() {
     FLAG_STRATEGY = readConfig("FLAG_STRATEGY", CONF_FILE_PATH, menuChoise);
     if(FLAG_STRATEGY < 0){ FLAG_STRATEGY = 0; }
 
-    firstRound = numRound = 1;
+    numRound = 1;
 
     /*Ottengo il puntatore alla memoria condivisa di dimensione SO_ALTEZZA * SO_BASE*/
     idMatrix = createSHM(IPC_PRIVATE, (SO_ALTEZZA * SO_BASE) * sizeof(int));
@@ -162,6 +161,7 @@ int main() {
     if(!modifySem(idSemSyncRound, 1, -(SO_NUM_G - 1))) { ERROR; return 0; }/*SEM2: Master finisce le bandierine (inizializzato ad 1)*/
     if(!modifySem(idSemSyncRound, 2, (SO_NUM_G * SO_NUM_P)-SO_NUM_G)) { ERROR; return 0; }/*SEM3: Gamer fornisce strategie ai Pawns*/
     if(!modifySem(idSemSyncRound, 3, -(SO_NUM_G - 1))) { ERROR; return 0; }/*SEM4: Avvio round (inizializzato ad 1)*/
+    if(!modifySem(idSemSyncRound, 4, (-SO_NUM_G))) { ERROR; return 0; }
 
     /*INVOCO I GIOCATORI*/
     dataGamer = (ResultRound *)malloc(sizeof(ResultRound) * SO_NUM_G);
@@ -239,7 +239,7 @@ int main() {
         }
 
         /*SEM5: Semaforo per sapere quando sono state prese tutte le flags (è inizializzato al numero di bandierine)*/
-        if(!modifySem(idSemSyncRound, 4, (-(SO_NUM_G * firstRound) + numFlags))) { ERROR; return 0; }
+        if(!modifySem(idSemSyncRound, 4, (numFlags))) { ERROR; return 0; }
 
         /*Stampo la matrix e le metriche del punto 1.6*/
         for(i = 0; i < SO_NUM_G; i++) {
@@ -400,7 +400,6 @@ int main() {
                     printf(RESET_COLOR);
 
                     /*Reset di tutti i semafori e variabili*/
-                    firstRound = 0;
                     if(!modifySem(idSemSyncRound, 2, (SO_NUM_G * SO_NUM_P))) { ERROR; return 0; }/*SEM3: Gamer fornisce strategie ai Pawns*/
                     if(!modifySem(idSemSyncRound, 3, 1)) { ERROR; return 0; }/*SEM4: Avvio round (inizializzato ad 1)*/
                     numRound++;

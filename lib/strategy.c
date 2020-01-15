@@ -155,6 +155,10 @@ int movesStrategyRandom(int idSemMatrix, int idSemFlags, const int actualPos, co
     return newPos;
 }
 int movesStrategyDxOrSx(int *matrix, int idSemMatrix, int idSemFlags, const int actualPos, const int base, const int higth) {
+    if(waitSemWithoutWait(idSemFlags, 4)) {
+        return -1;
+    }
+
     /*Provo a DX, SX, UP e DW se c'è una bandierina (solo un movimento)*/
     int newPosDx = findCorrectPos(MOVE_DX, actualPos, base, higth);
     int newPosSx = findCorrectPos(MOVE_SX, actualPos, base, higth);
@@ -235,6 +239,10 @@ int movesStrategyOnLine(int *matrix, int idSemMatrix, int flag, const int actual
 }
 /*Provo a DX, SX, UP DW e le 4 diagonali possibili se c'è una bandierina (solo un movimento)*/
 int movesStrategyDiagonal(int *matrix, int idSemMatrix, int idSemFlags, const int actualPos, const int base, const int higth) {
+    if(waitSemWithoutWait(idSemFlags, 4)) {
+        return -1;
+    }
+
     int newPosDx = findCorrectPos(MOVE_DX, actualPos, base, higth);
     int newPosSx = findCorrectPos(MOVE_SX, actualPos, base, higth);
     int newPosUp = findCorrectPos(MOVE_UP, actualPos, base, higth);
