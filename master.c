@@ -5,22 +5,23 @@
 
 #define CONF_FILE_PATH "./config"
 
-static int idMatrix, idSemMatrix, idSemSyncRound, idMsgGamer, idSemGamer;
+static int idMatrix, idSemMatrix, idSemSyncRound, idMsgGamer, idSemGamer, idTotalTime;
 
 void endHandle(int signal) {
     removeSem(idSemSyncRound);
     removeSem(idSemMatrix);
     removeSem(idSemGamer);
     removeQueue(idMsgGamer);
+    removeSHM(idTotalTime);
     removeSHM(idMatrix);
     kill(0, SIGUSR1);
-    printf("\nAttuata procedura di terminazione debug\n");
+    printf("\nAttuata procedura di terminazione!\n");
     exit(0);
 }
 
 int main() {
     pid_t pidChild;
-    int i, numFlags, numRound, posFlag, statusFork, totalPoints, idTotalTime, actualFlagsPoint, gamerWin, menuChoise, SO_NUM_G, SO_NUM_P, SO_BASE, SO_ALTEZZA, SO_FLAG_MIN, SO_FLAG_MAX, SO_N_MOVES, SO_MAX_TIME, SO_ROUND_SCORE, FLAG_STRATEGY;
+    int i, numFlags, numRound, posFlag, statusFork, totalPoints, actualFlagsPoint, gamerWin, menuChoise, SO_NUM_G, SO_NUM_P, SO_BASE, SO_ALTEZZA, SO_FLAG_MIN, SO_FLAG_MAX, SO_N_MOVES, SO_MAX_TIME, SO_ROUND_SCORE, FLAG_STRATEGY;
     char *argsToGamer[ARGS_TO_PASS_OF_GAMER];
     char bufferIdMsg[MAX_BUFF_SIZE], bufferIdSemGamer[MAX_BUFF_SIZE], bufferIdSemMatrix[MAX_BUFF_SIZE], bufferIdMatrix[MAX_BUFF_SIZE], bufferIdSemSyncRound[MAX_BUFF_SIZE], bufferMenuChoise[MAX_BUFF_SIZE];
     int *matrix;
@@ -338,7 +339,7 @@ int main() {
                     printf("bandierine su ");printf(RESET_COLOR);printf("%d ", numFlags);printf(GREEN);printf("sono state prese (ne mancano ");
                     printf(RESET_COLOR);printf("%d", getValueOfSem(idSemSyncRound, 4));printf(GREEN);printf(")\n");
                     printf(RESET_COLOR);printf("\t%d ", numRound);printf(GREEN);printf("round giocati\n\n");
-                    totalPoints = 0; gamerWin = 1;
+                    totalPoints = 0;
                     for(i = 0; i < SO_NUM_G; i++) {
                         printf(GREEN);
                         printf("\t[Giocatore %d]:\n", i + 1);
@@ -359,21 +360,30 @@ int main() {
                             printf(RESET_COLOR);
                         }
                         totalPoints += dataGamer[i].points;
-                        /*Calcolo del giocatore vincitore: uso gamerWin = 0 per stabilire la partità in parità*/
-                        if(i > 0 && dataGamer[i].points >= dataGamer[i - 1].points) {
+                    }
+
+                    /*Calcolo del giocatore vincitore*/
+                    gamerWin = -1;
+                    for(i = 1; i < SO_NUM_G; i++) {
+                        if(gamerWin < 0) {
                             if(dataGamer[i].points > dataGamer[i - 1].points) {
                                 gamerWin = i + 1;
-                            } else {
-                                gamerWin = 0;
+                            } else if(dataGamer[i].points < dataGamer[i - 1].points) {
+                                gamerWin = i;
+                            }
+                        } else {
+                            if(dataGamer[i].points > dataGamer[i - 1].points && dataGamer[i].points > dataGamer[gamerWin - 1].points) {
+                                gamerWin = i + 1;
+                            } else if(dataGamer[i].points < dataGamer[i - 1].points && dataGamer[i - 1].points > dataGamer[gamerWin - 1].points) {
+                                gamerWin = i;
                             }
                         }
-
                     }
                     printf(RESET_COLOR);
                     printf("\n\tPunti totali / tempo di gioco totale: ");
                     printf(GREEN);
                     printf("%f\n\n", (totalPoints / *(totalTime)));
-                    if(gamerWin == 0) {
+                    if(gamerWin < 0) {
                         printf("Il gioco finisce in ");
                         printf(RESET_COLOR);
                         printf("pareggio!\n");
