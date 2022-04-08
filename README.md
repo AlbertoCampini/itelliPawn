@@ -95,7 +95,7 @@ Tabella 1: Esempio di valori di configurazione.
 - punteggio conseguito dai giocatori
 - numero totale di mosse residue delle pedine di un ciascun giocatore
 
-## 2 Configurazione
+# 2 Configurazione
 
 Il gioco legge i parametri di configurazione dalle seguenti variabili di ambiente, che devono essere state preventiva-
 mente impostate. I parametri di configurazione sono i seguenti:
@@ -108,6 +108,6 @@ mente impostate. I parametri di configurazione sono i seguenti:
 - `SO_ROUND_SCORE`: punteggio totale assegnato per round alle varie bandierine
 - `SO_N_MOVES`: numero totale di mosse a disposizione delle pedine
 La Tabella elenca valori “easy” e “hard” per le configurazione da testare.
-## 3 Requisiti implementativi
+# 3 Requisiti implementativi
 Il progetto deve essere realizzato sfruttando le tecniche di divisione in moduli del codice, compreso l’utilizzo
 dell’utility make.
